@@ -1,1 +1,2 @@
-# HealthMonitorUnit
+# Health Monitor Unit
+Health Monitor Unit is an Electrical & Computer Engineering capstone project at Queen's University. The goal of this project is to be able to collect human biometric data using an Arduino microcontroller, transmit the data to web server running on a rasberry-pi and host a website for users to view the users current biometrics as well as recieve health alerts when anomolies are detected.
