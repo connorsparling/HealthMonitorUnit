@@ -48,11 +48,11 @@ def display_plots(X, Y, count, length=10, start=0, delay=0.2):
     
 def main():
     #import data
-    mitbih_train_X, mitbih_train_Y = mitbh_process('mitbih_train.csv')
-    mitbih_test_X, mitbih_test_Y = mitbh_process('mitbih_test.csv')
-    ptbdp_train_X, ptbdp_train_Y, ptbdp_test_X, ptbdp_test_Y = ptbdb_process('ptbdb_normal.csv', 'ptbdb_abnormal.csv')
+    mitbih_train_X, mitbih_train_Y = mitbh_process('data/mitbih_train.csv')
+    mitbih_test_X, mitbih_test_Y = mitbh_process('data/mitbih_test.csv')
+    ptbdp_train_X, ptbdp_train_Y, ptbdp_test_X, ptbdp_test_Y = ptbdb_process('data/ptbdb_normal.csv', 'data/ptbdb_abnormal.csv')
 
-    display_plots(ptbdp_test_X, ptbdp_test_Y, 100, length=5, delay=3)
+    display_plots(mitbih_test_X, mitbih_test_Y, 100, length=10, delay=2, start=15000)
 
 if __name__ == '__main__':
-	main()
+    main()
