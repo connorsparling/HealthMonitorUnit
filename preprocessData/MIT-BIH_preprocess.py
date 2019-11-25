@@ -84,10 +84,11 @@ def normalize_data(data):
         data[i] = np.divide(data[i], data[i].max())#np.max(data[i].max(), np.abs(data[i].min())))
     return data
 
-def downsample(data, amount):
-    new = data[:,range(0, data.shape[1], amount)]
-    print("From {} to {}".format(data.shape, new.shape))
-    return new
+def downsample(data, peaks, amount):
+    new_data = data[:,range(0, data.shape[1], amount)]
+    new_peaks = [[int(p / amount) for p in local_peaks] for local_peaks in peaks]
+    print("From {} to {}".format(data.shape, new_data.shape))
+    return new_data, new_peaks
 
 def get_peaks(data):
     peaks = []
@@ -250,8 +251,8 @@ def main(argv):
             filename = arg
         elif opt in ("-l", "--lead"):
             lead_placement = arg
-        # elif opt in ("-d", "--downsample"):
-        #     downsample_amount = int(arg)
+        elif opt in ("-d", "--downsample"):
+            downsample_amount = int(arg)
         elif opt in ("-p", "--plot"):
             plot_type = arg
         elif opt in ("-s", "--split"):
@@ -261,11 +262,12 @@ def main(argv):
         print("Please input a lead placement position")
         sys.exit()
 
+    if split_location is not None and downsample_amount is not None:
+        print("Cannot downsample and split graph into sections")
+        sys.exit()
+
     labels, data, peaks, heartbeat_types = load_data(filename, lead_placement)
     data = normalize_data(data)
-
-    # if downsample_amount is not None:
-    #     data = downsample(data, downsample_amount)
 
     #peaks = get_peaks(data) # OLD METHOD
 
@@ -275,6 +277,9 @@ def main(argv):
         heartbeat_types = None #******** CAREFULL
     elif split_location == "center":
         sections, heartbeat_types = split_center_peak(data, peaks, heartbeat_types, 200)
+
+    if downsample_amount is not None:
+        data, peaks = downsample(data, peaks, downsample_amount)
 
     if plot_type == "range":
         for i in range(data.shape[0]):
@@ -287,7 +292,7 @@ def main(argv):
 
 # Example Command:
 #   python3 preprocessData/MIT-BIH_preprocess.py -f Datasets/mitbih-database -l MLII -p section -s center
-#   python3 preprocessData/MIT-BIH_preprocess.py -f Datasets/mitbih-database -l MLII -p range
+#   python3 preprocessData/MIT-BIH_preprocess.py -f Datasets/mitbih-database -l MLII -p range -d 2
             
         
 if __name__ == '__main__':
