@@ -306,9 +306,9 @@ def main(argv):
     preprocess(filename, lead_placement, split_location, downsample_amount, segment_length, plot_type, save_to_filename)
 
 # Example Command:
-#   python3 preprocessData/MIT-BIH_preprocess.py -f Datasets/mitbih-database -l MLII -p section -s center -S preprocessData/SectionData.csv
-#   python3 preprocessData/MIT-BIH_preprocess.py -f Datasets/mitbih-database -l MLII -p range -d 2
-#   python3 preprocessData/MIT-BIH_preprocess.py -f Datasets/mitbih-database -l MLII -s center -S preprocessData/SectionData.csv
+#   python3 preprocessData/MIT_BIH_preprocess.py -f Datasets/mitbih-database -l MLII -p section -s center -S preprocessData/SectionData.csv
+#   python3 preprocessData/MIT_BIH_preprocess.py -f Datasets/mitbih-database -l MLII -p range -d 2
+#   python3 preprocessData/MIT_BIH_preprocess.py -f Datasets/mitbih-database -l MLII -s center -S preprocessData/SectionData.csv
         
 if __name__ == '__main__':
 	main(sys.argv[1:])
