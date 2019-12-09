@@ -4,3 +4,4 @@ preprocessData/heartbeat/data/mitbih_train.csv
 preprocessData/heartbeat/data/mitbih_test.csv
 Datasets/*/*
 preprocessData/SectionData.csv
+*.pyc
