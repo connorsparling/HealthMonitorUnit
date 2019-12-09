@@ -59,7 +59,7 @@ def load_data(directory, lead_placement):
     peaks = []
     heartbeat_types = []
     if os.path.exists(directory):
-        for filename in os.listdir(directory)[:6]:
+        for filename in os.listdir(directory):
             if filename.endswith(".csv"):
                 label = filename[:-4]
                 d = load_data_from_csv(os.path.join(directory, filename), lead_placement)
@@ -308,6 +308,7 @@ def main(argv):
 # Example Command:
 #   python3 preprocessData/MIT-BIH_preprocess.py -f Datasets/mitbih-database -l MLII -p section -s center -S preprocessData/SectionData.csv
 #   python3 preprocessData/MIT-BIH_preprocess.py -f Datasets/mitbih-database -l MLII -p range -d 2
+#   python3 preprocessData/MIT-BIH_preprocess.py -f Datasets/mitbih-database -l MLII -s center -S preprocessData/SectionData.csv
         
 if __name__ == '__main__':
 	main(sys.argv[1:])
