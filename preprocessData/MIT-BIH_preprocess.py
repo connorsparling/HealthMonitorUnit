@@ -7,8 +7,6 @@ from matplotlib.widgets import Button
 from sklearn.preprocessing import normalize
 import scipy.signal as sig
 
-DEFAULT_LEAD = "MLII"
-
 def exit_app(event):
     sys.exit(0)
 
@@ -231,15 +229,60 @@ class RangePlot():
 
         plt.show()
 
+def preprocess(filename, lead_placement, split_location, downsample_amount, segment_length, plot_type, save_to_filename):
+    if lead_placement is None:
+        print("Please input a lead placement position")
+        sys.exit()
+
+    if split_location is not None and downsample_amount is not None:
+        print("Cannot downsample and split graph into sections")
+        sys.exit()
+
+    labels, data, peaks, heartbeat_types = load_data(filename, lead_placement)
+    data = normalize_data(data)
+
+    #peaks = get_peaks(data) # OLD METHOD
+
+    sections = None
+    if split_location == "peak":
+        sections = split_peak_to_peak(data, peaks, segment_length)
+        heartbeat_types = None #******** CAREFULL
+    elif split_location == "center":
+        sections, heartbeat_types = split_center_peak(data, peaks, heartbeat_types, segment_length)
+
+    if downsample_amount is not None:
+        data, peaks = downsample(data, peaks, downsample_amount)
+
+    if plot_type == "range":
+        for i in range(data.shape[0]):
+            RangePlot("Label {}".format(labels[i]), data[i], peaks[i], length=2000)
+    if plot_type == "section":
+        if sections is None:
+            print("Please select a split location ('peak' or 'center')")
+        for i in range(sections.shape[0]):
+            SectionPlot("Label {}".format(labels[i]), sections[i], types=heartbeat_types[i])
+
+    if save_to_filename is not None:
+        with open(save_to_filename, mode='w', newline='') as save_file:
+            csv_writer = csv.writer(save_file)
+            csv_writer.writerow(list(range(segment_length)) + ['ecgNum', 'type'])
+            for i in range(sections.shape[0]):
+                for j in range(len(sections[i])):
+                    # [data, ecg number, type]
+                    csv_writer.writerow(list(map(str, sections[i][j])) + [labels[i], heartbeat_types[i][j]])
+        save_file.close()
+
 def main(argv):
+    segment_length = 100
     filename = None
     lead_placement = "MLII"
     plot_type = None
     downsample_amount = None
     split_location = None
+    save_to_filename = None
     function_format = "MITBIH_preprocess.py [-f <input_file>] [-l <lead_placement>] [-d <downsample_amount>] [-p <plot_type>] [-s <split_location>]"
     try:
-        opts, args = getopt.getopt(argv,"hd:f:l:p:s:",["file=", "lead=", "plot=", "downsample=", "split="])
+        opts, args = getopt.getopt(argv,"hd:f:l:p:s:S:",["file=", "lead=", "plot=", "downsample=", "split=", "save="])
     except getopt.GetoptError:
         print("INCORRECT FORMAT: \"" + function_format + "\"")
         sys.exit(2)
@@ -257,43 +300,14 @@ def main(argv):
             plot_type = arg
         elif opt in ("-s", "--split"):
             split_location = arg
+        elif opt in ("-S", "--save"):
+            save_to_filename = arg
 
-    if lead_placement is None:
-        print("Please input a lead placement position")
-        sys.exit()
-
-    if split_location is not None and downsample_amount is not None:
-        print("Cannot downsample and split graph into sections")
-        sys.exit()
-
-    labels, data, peaks, heartbeat_types = load_data(filename, lead_placement)
-    data = normalize_data(data)
-
-    #peaks = get_peaks(data) # OLD METHOD
-
-    sections = None
-    if split_location == "peak":
-        sections = split_peak_to_peak(data, peaks, 200)
-        heartbeat_types = None #******** CAREFULL
-    elif split_location == "center":
-        sections, heartbeat_types = split_center_peak(data, peaks, heartbeat_types, 200)
-
-    if downsample_amount is not None:
-        data, peaks = downsample(data, peaks, downsample_amount)
-
-    if plot_type == "range":
-        for i in range(data.shape[0]):
-            RangePlot("Label {}".format(labels[i]), data[i], peaks[i], length=2000)
-    if plot_type == "section":
-        if sections is None:
-            print("Please select a split location ('peak' or 'center')")
-        for i in range(sections.shape[0]):
-            SectionPlot("Label {}".format(labels[i]), sections[i], types=heartbeat_types[i])
+    preprocess(filename, lead_placement, split_location, downsample_amount, segment_length, plot_type, save_to_filename)
 
 # Example Command:
-#   python3 preprocessData/MIT-BIH_preprocess.py -f Datasets/mitbih-database -l MLII -p section -s center
+#   python3 preprocessData/MIT-BIH_preprocess.py -f Datasets/mitbih-database -l MLII -p section -s center -S preprocessData/SectionData.csv
 #   python3 preprocessData/MIT-BIH_preprocess.py -f Datasets/mitbih-database -l MLII -p range -d 2
-            
         
 if __name__ == '__main__':
 	main(sys.argv[1:])
