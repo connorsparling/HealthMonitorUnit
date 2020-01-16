@@ -10,7 +10,9 @@ import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 
 import { SocketIoModule, SocketIoConfig } from 'ngx-socket-io';
-const config: SocketIoConfig = { url: 'https://healthmonitorunit-backend.firebaseapp.com', options: {} }; // http://localhost:8080
+import { SERVER_URL } from 'src/environments/environment';
+
+const config: SocketIoConfig = { url: SERVER_URL, options: {} };
 
 @NgModule({
   declarations: [AppComponent],
