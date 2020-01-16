@@ -23,8 +23,8 @@ socket.emit('clear-stream-data');
 socket.on('ecg-point', function(data) {
     while(true) {
         newTime = new Date().valueOf();
-        if (newTime - time > 200) {
-            time += 200;
+        if (newTime - time > 8) {
+            time += 8;
             i = index;
             index++;
             socket.emit('new-ecg-point', {sampleNum: parseInt(ecgData[i][0]), value: parseInt(ecgData[i][1]), time: new Date().valueOf()});
