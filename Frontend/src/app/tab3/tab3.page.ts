@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { Socket } from 'ngx-socket-io';
 import { ToastController } from '@ionic/angular';
+import { SERVER_URL } from 'src/environments/environment';
 
 @Component({
   selector: 'app-tab3',
@@ -10,6 +11,7 @@ import { ToastController } from '@ionic/angular';
 export class Tab3Page implements OnInit {
   message = '';
   messages = [];
+  ecgData = [];
   currentUser = '';
 
   constructor(
@@ -18,6 +20,7 @@ export class Tab3Page implements OnInit {
   ) { }
 
   ngOnInit() {
+    console.log('Connecting to ' + SERVER_URL + ' ...');
     this.socket.connect();
 
     const name = `user-${new Date().getTime()}`;
@@ -36,6 +39,14 @@ export class Tab3Page implements OnInit {
 
     this.socket.fromEvent('message').subscribe(message => {
       this.messages.push(message);
+    });
+
+    this.socket.fromEvent('clear-messages').subscribe(data => {
+      this.ecgData = [];
+    });
+
+    this.socket.fromEvent('ecg-point').subscribe(data => {
+      this.ecgData.push({sampleNum: data['sampleNum'], value: data['value']});
     });
   }
 
