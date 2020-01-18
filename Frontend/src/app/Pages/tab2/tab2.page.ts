@@ -119,6 +119,11 @@ export class Tab2Page implements OnInit {
     this.webSocketService.emitMessage('reset-ecg');
   }
 
+  reconnect() {
+    this.webSocketService.disconnect();
+    this.webSocketService.connect();
+  }
+
   // ionViewWillLeave() {
   //   this.webSocketService.unsubscribeFromEvents(this.router.url);
   // }

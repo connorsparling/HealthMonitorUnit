@@ -12,7 +12,7 @@ import { AppComponent } from './app.component';
 import { SocketIoModule, SocketIoConfig } from 'ngx-socket-io';
 import { SERVER_URL } from 'src/environments/environment';
 
-const config: SocketIoConfig = { url: SERVER_URL, options: {} };
+const config: SocketIoConfig = { url: SERVER_URL, options: { } };
 
 @NgModule({
   declarations: [AppComponent],

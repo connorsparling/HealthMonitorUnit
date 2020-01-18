@@ -6,7 +6,7 @@ import { WebSocketCallback } from '../Models/WebSocket.model';
 @Injectable({
   providedIn: 'root'
 })
-export class WebSocketService{
+export class WebSocketService {
   private callbacks: WebSocketCallback[] = [];
 
   constructor(
@@ -16,9 +16,12 @@ export class WebSocketService{
   connect() {
     console.log('Connecting to ' + SERVER_URL + ' ...');
     this.socket.connect();
-    const name = `user-${new Date().getTime()}`;
 
-    this.socket.emit('set-name', name);
+    this.socket.on('connect', () => {
+      console.log('CONNECTED');
+      const name = `user-${new Date().getTime()}`;
+      this.socket.emit('set-name', name);
+    });
   }
 
   addFromEvent(page: string, eventName: string, callback: (data: any) => void) {
