@@ -1,13 +1,16 @@
 let app = require('express')();
 let server = require('http').createServer(app);
 let io = require('socket.io')(server);
- 
+
+console.log("STARTING SERVER");
 io.on('connection', (socket) => {
+  console.log('CONNECTION ESTABLISHED');
   socket.on('disconnect', function(){
     io.emit('users-changed', {user: socket.username, event: 'left'});   
   });
- 
+
   socket.on('set-name', (name) => {
+    console.log('SET NAME: ' + name);
     socket.username = name;
     io.emit('users-changed', {user: name, event: 'joined'});  
   });
@@ -24,10 +27,33 @@ io.on('connection', (socket) => {
     console.log(message);
     io.emit('ecg-point', {sampleNum: message.sampleNum, value: message.value, createdAt: new Date().valueOf()}); 
   });
+
+  socket.on('start-ecg', function() {
+    console.log('START ECG');
+    io.emit('start-ecg');
+  });
+
+  socket.on('pause-ecg', function() {
+    console.log('PAUSE ECG');
+      io.emit('pause-ecg');
+  });
+
+  socket.on('reset-ecg', function() {
+    console.log('RESET ECG');
+      io.emit('reset-ecg');
+  });
 });
 
 var port = process.env.PORT || 8080;
 
+function updateMe() {
+  setTimeout(function() {
+    console.log('still working at ' + new Date().getTime());
+    updateMe();
+  }, 10000);
+}
+
 server.listen(port, function(){
   console.log('listening in http://localhost:' + port);
+  updateMe();
 });

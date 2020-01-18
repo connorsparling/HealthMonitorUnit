@@ -1,42 +1,57 @@
 let csv = require('csv');
 const io = require('socket.io-client');
 
-const socket = io('http://localhost:8080');
-
-// this.socket.subscribe('ecg-point', message => {
-//     console.log('I GOT IT BACK');
-// });
-
-// socket.emit('new-ecg-point', {sampleNum: 234234234, value: 5673245, time: 3657432});
-// function ECGDatatype(Fone, Ftwo) {
-//     this.sample_num = Fone;
-//     this.value = Ftwo;
-// }; 
+console.log("STARTING TEST CLIENT");
+var WEBSOCKET = process.env.WEBSOCKET || 'http://localhost:8080';
+console.log("CONNECTING TO: " + WEBSOCKET);
+const socket = io(WEBSOCKET);
+console.log("CONNECTED");
 
 var time = new Date().valueOf();
 var index = 0;
+var pauseEcg = true;
+
+function sendNewEcgPoint() {
+    index++;
+    if (index >= ecgData.length) {
+        index = 1;
+    }
+    socket.emit('new-ecg-point', {sampleNum: parseInt(ecgData[index][0]), value: parseInt(ecgData[index][1]), time: new Date().valueOf()});
+}
 
 ecgData = [];
 
-socket.emit('clear-stream-data');
+socket.on('start-ecg', function() {
+    console.log('START');
+    pauseEcg = false;
+    time = new Date().valueOf();
+    sendNewEcgPoint();
+});
+
+socket.on('pause-ecg', function() {
+    console.log('PAUSE');
+    pauseEcg = true;
+});
+
+socket.on('reset-ecg', function() {
+    console.log('RESET');
+    index = 0;
+});
 
 socket.on('ecg-point', function(data) {
-    while(true) {
-        newTime = new Date().valueOf();
-        if (newTime - time > 8) {
-            time += 8;
-            i = index;
-            index++;
-            socket.emit('new-ecg-point', {sampleNum: parseInt(ecgData[i][0]), value: parseInt(ecgData[i][1]), time: new Date().valueOf()});
-            break;
+    if (!pauseEcg) {
+        while(true) {
+            newTime = new Date().valueOf();
+            if (newTime - time > 8) {
+                time += 8;
+                sendNewEcgPoint();
+                break;
+            }
         }
     }
 });
 
 const obj = csv();
-obj.from.path('ecg_data/mitbih-database/100.csv').to.array(function (data) {
+obj.from.path('ecg_data/mitbih-database/104.csv').to.array(function (data) {
     ecgData = data;
-    i = index;
-    index++;
-    socket.emit('new-ecg-point', {sampleNum: parseInt(ecgData[i][0]), value: parseInt(ecgData[i][1]), time: new Date().valueOf()});
 });
