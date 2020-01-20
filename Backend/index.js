@@ -23,9 +23,10 @@ io.on('connection', (socket) => {
     io.emit('clear-messages'); 
   });
 
-  socket.on('new-ecg-point', (message) => {
+  socket.on('new-ecg-point', (message, fn) => {
     console.log(message);
-    io.emit('ecg-point', {sampleNum: message.sampleNum, value: message.value, createdAt: new Date().valueOf()}); 
+    fn();
+    socket.broadcast.emit('ecg-point', {sampleNum: message.sampleNum, value: message.value, createdAt: new Date().valueOf()}); 
   });
 
   socket.on('start-ecg', function() {
@@ -41,6 +42,11 @@ io.on('connection', (socket) => {
   socket.on('reset-ecg', function() {
     console.log('RESET ECG');
       io.emit('reset-ecg');
+  });
+
+  socket.on('pingmebaby', function() {
+    console.log('pingmebaby');
+    io.emit('pingmebaby');
   });
 });
 
