@@ -1,0 +1,13 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-title>
+      ECG Data Feed
+    </ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <div class="message-grid">
+    <span *ngFor="let ecgDataPoint of ecgData">{{ ecgDataPoint.sampleNum }}: {{ ecgDataPoint.value }}</span>
+  </div>
+</ion-content>
