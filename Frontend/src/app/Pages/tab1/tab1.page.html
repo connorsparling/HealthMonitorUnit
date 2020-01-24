@@ -7,5 +7,6 @@
 </ion-header>
 
 <ion-content>
-  WELCOME BABY
+  <ion-button (click)="getNewECGSegments()">GET NEW SHIT</ion-button>
+  <app-chart-grid *ngIf="ecgSegments" [items]="ecgSegments"></app-chart-grid>
 </ion-content>
