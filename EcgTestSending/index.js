@@ -11,32 +11,39 @@ socket.on('connect', function(){
     console.log("CONNECTED");
 
     var time = new Date().valueOf();
-    var index = 0;
+    var index = 1;
     var pauseEcg = true;
+    var packetSize = 200;
+    var delay = 8 * packetSize;
 
     function sendNewEcgPoint() {
         if (!pauseEcg) {
             while(true) {
                 newTime = new Date().valueOf();
-                if (newTime - time > 8) {
-                    time += 8;
-                    index++;
-                    if (index >= ecgData.length) {
-                        index = 1;
-                    }
+                if (newTime - time > delay) {
+                    time += delay;
                     console.log("SENDING NEW POINT AT " + newTime);
+                    var data = [];
+                    for (var i = index; i < index + packetSize; i++) {
+                        if (index < ecgData.length) {
+                            data.push({
+                                sampleNum: parseInt(ecgData[i][0]), 
+                                value: parseInt(ecgData[i][1]), 
+                            })
+                        }
+                    }
                     socket.emit(
                         'new-ecg-point', 
-                        {
-                            sampleNum: parseInt(ecgData[index][0]), 
-                            value: parseInt(ecgData[index][1]), 
-                            time: new Date().valueOf()
-                        }, 
+                        { data }, 
                         () => {
                             console.log("RESPONSE AT " + new Date().valueOf());
                             sendNewEcgPoint();
                         }
                     );
+                    index += packetSize;
+                    if (index >= ecgData.length) {
+                        index = 1;
+                    }
                     break;
                 }
             }

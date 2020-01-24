@@ -7,6 +7,53 @@ from matplotlib.widgets import Button
 from sklearn.preprocessing import normalize
 import scipy.signal as sig
 
+BEAT_TYPES = {
+    'N': 'Normal beat',
+    'L': 'Left bundle branch block beat',
+    'R': 'Right bundle branch block beat',
+    'B': 'Bundle branch block beat (unspecified)',
+    'A': 'Atrial premature beat',
+    'a': 'Aberrated atrial premature beat',
+    'J': 'Nodal (junctional) premature beat',
+    'S': 'Supraventricular premature or ectopic beat (atrial or nodal)',
+    'V': 'Premature ventricular contraction',
+    'r': 'R-on-T premature ventricular contraction',
+    'F': 'Fusion of ventricular and normal beat',
+    'e': 'Atrial escape beat',
+    'j': 'Nodal (junctional) escape beat',
+    'n': 'Supraventricular escape beat (atrial or nodal)',
+    'E': 'Ventricular escape beat',
+    '/': 'Paced beat',
+    'f': 'Fusion of paced and normal beat',
+    'Q': 'Unclassifiable beat',
+    '?': 'Beat not classified during learning',
+}
+
+NON_BEAT_TYPES = {
+    '[': 'Start of ventricular flutter/fibrillation',
+    '!': 'Ventricular flutter wave',
+    ']': 'End of ventricular flutter/fibrillation',
+    'x': 'Non-conducted P-wave (blocked APC)',
+    '(': 'Waveform onset',
+    ')': 'Waveform end',
+    'p': 'Peak of P-wave',
+    't': 'Peak of T-wave',
+    'u': 'Peak of U-wave',
+    '`': 'PQ junction',
+    '\'': 'J-point',
+    '^': '(Non-captured) pacemaker artifact',
+    '|': 'Isolated QRS-like artifact [1]',
+    '~': 'Change in signal quality [1]',
+    '+': 'Rhythm change [2]',
+    's': 'ST segment change [2]',
+    'T': 'T-wave change [2]',
+    '*': 'Systole',
+    'D': 'Diastole',
+    '=': 'Measurement annotation [2]',
+    '"': 'Comment annotation [2]',
+    '@': 'Link to external data [3]',
+}
+
 def exit_app(event):
     sys.exit(0)
 
@@ -29,6 +76,8 @@ def load_data_from_csv(filename, lead_placement):
 def load_data_from_txt(filename):
     peaks = []
     heartbeat_types = []
+    annotations = []
+    annotation_types = []
     if filename is not None:
         with open(filename) as txt_file:
             for i, line in enumerate(txt_file):
@@ -45,12 +94,16 @@ def load_data_from_txt(filename):
                             elif j == 3:
                                 heartbeat_type = d
                                 break
-                    peaks.append(peak)
-                    heartbeat_types.append(heartbeat_type)
+                    if heartbeat_type in BEAT_TYPES.keys():
+                        peaks.append(peak)
+                        heartbeat_types.append(heartbeat_type)
+                    elif heartbeat_type in NON_BEAT_TYPES.keys():
+                        annotations.append(peak)
+                        annotation_types.append(heartbeat_type)
         txt_file.close()
     
     if len(peaks) > 0:
-        return peaks, heartbeat_types
+        return peaks, heartbeat_types, annotations, annotation_types
     return None, None
 
 def load_data(directory, lead_placement):
@@ -58,6 +111,8 @@ def load_data(directory, lead_placement):
     labels = []
     peaks = []
     heartbeat_types = []
+    annotations = []
+    annotation_types = []
     if os.path.exists(directory):
         for filename in os.listdir(directory):
             if filename.endswith(".csv"):
@@ -66,15 +121,17 @@ def load_data(directory, lead_placement):
                 if d is not None:
                     print("Label {}: {}".format(label, d.shape))
                     anno_file = os.path.join(directory, str(label) + "annotations.txt")
-                    p, ht = load_data_from_txt(anno_file)
+                    p, ht, a, at = load_data_from_txt(anno_file)
                     if p is not None:
                         data.append(d)
                         labels.append(label)
                         peaks.append(p)
                         heartbeat_types.append(ht)
+                        annotations.append(a)
+                        annotation_types.append(at)
                         continue
-                print("Label {} does not contain \"{}\"".format(label, lead_placement))
-    return labels, np.array(data), peaks, heartbeat_types
+                print("Label {}: does not contain \"{}\"".format(label, lead_placement))
+    return labels, np.array(data), peaks, heartbeat_types, annotations, annotation_types
 
 def normalize_data(data):
     for i in range(data.shape[0]):
@@ -238,7 +295,7 @@ def preprocess(filename, lead_placement, split_location, downsample_amount, segm
         print("Cannot downsample and split graph into sections")
         sys.exit()
 
-    labels, data, peaks, heartbeat_types = load_data(filename, lead_placement)
+    labels, data, peaks, heartbeat_types, annotations, annotation_types = load_data(filename, lead_placement)
     data = normalize_data(data)
 
     #peaks = get_peaks(data) # OLD METHOD

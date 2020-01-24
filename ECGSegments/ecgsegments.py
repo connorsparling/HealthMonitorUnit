@@ -7,6 +7,9 @@ import csv
 
 sio = socketio.AsyncClient()
 
+WEBSOCKET_CLOUD = 'https://backend.healthmonitor.dev'
+WEBSOCKET_LOCAL = 'http://localhost:8080'
+
 segment_type_dict = {}
 ECGSegments = []
 
@@ -18,7 +21,7 @@ async def event_name():
 
 def load_ECG_segments():
     print('Loading ECG Segments...')
-    filename = 'SectionData.csv'
+    filename = '../Datasets/SectionData.csv'
     if os.path.exists(filename):
         with open(filename) as csv_file:
             csv_reader = csv.reader(csv_file, delimiter=',')
@@ -63,8 +66,7 @@ def disconnect():
     print("I'm disconnected!")
 
 async def connect_to_server():
-    await sio.connect('http://localhost:8080') # Connect to local server
-    # await sio.connect('https://backend.healthmonitor.dev') # Connect to cloud server
+    await sio.connect(WEBSOCKET)
     await sio.wait()
 
 async def main():

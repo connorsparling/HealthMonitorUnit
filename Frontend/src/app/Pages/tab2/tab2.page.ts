@@ -86,7 +86,17 @@ export class Tab2Page implements OnInit {
     });
 
     this.webSocketService.addFromEvent(this.router.url, 'ecg-point', data => {
-      this.addData(data['sampleNum'], data['value']);
+      this.addArrayData(data['data']);
+    });
+  }
+
+  addArrayData(data) {
+    let delay = 0;
+    data.forEach(element => {
+      setTimeout(() => {
+        this.addData(element['sampleNum'], element['value']);
+      }, delay);
+      delay += 8;
     });
   }
 

@@ -26,7 +26,7 @@ io.on('connection', (socket) => {
   socket.on('new-ecg-point', (message, fn) => {
     console.log(message);
     fn();
-    socket.broadcast.emit('ecg-point', {sampleNum: message.sampleNum, value: message.value, createdAt: new Date().valueOf()}); 
+    socket.broadcast.emit('ecg-point', {data: message.data, createdAt: new Date().valueOf()}); 
   });
 
   socket.on('start-ecg', function() {
