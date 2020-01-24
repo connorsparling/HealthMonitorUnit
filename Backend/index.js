@@ -26,7 +26,7 @@ io.on('connection', (socket) => {
   socket.on('new-ecg-point', (message, fn) => {
     console.log(message);
     fn();
-    socket.broadcast.emit('ecg-point', {sampleNum: message.sampleNum, value: message.value, createdAt: new Date().valueOf()}); 
+    socket.broadcast.emit('ecg-point', {data: message.data, createdAt: new Date().valueOf()}); 
   });
 
   socket.on('start-ecg', function() {
@@ -36,12 +36,22 @@ io.on('connection', (socket) => {
 
   socket.on('pause-ecg', function() {
     console.log('PAUSE ECG');
-      io.emit('pause-ecg');
+    io.emit('pause-ecg');
   });
 
   socket.on('reset-ecg', function() {
     console.log('RESET ECG');
-      io.emit('reset-ecg');
+    io.emit('reset-ecg');
+  });
+
+  socket.on('get-ecg-segments', function() {
+    console.log('GET ECG SEGMENTS');
+    io.emit('get-ecg-segments');
+  });
+
+  socket.on('new-ecg-segments', function(data) {
+    console.log('GET ECG SEGMENTS');
+    io.emit('new-ecg-segments', data);
   });
 
   socket.on('pingmebaby', function() {

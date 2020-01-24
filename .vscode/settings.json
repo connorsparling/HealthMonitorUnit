@@ -3,5 +3,5 @@
     "python.analysis.disabled": [
         "unresolved-import"
     ],
-    "python.pythonPath": "/usr/bin/python3"
+    "python.pythonPath": "/Users/connorsparling/opt/anaconda3/envs/PythonSocket/bin/python"
 }
