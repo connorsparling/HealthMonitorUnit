@@ -1,0 +1,14 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-title>
+      Health Monitor Unit: Arrythmias
+    </ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <app-chart-grid *ngIf="ecgSegments" [items]="ecgSegments"></app-chart-grid>
+  <div class="get-more">
+    <ion-button (click)="getNewECGSegments()" class="get-more-button">GET NEW SHIT</ion-button>
+  </div>
+</ion-content>

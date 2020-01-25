@@ -1,0 +1,25 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-title>
+      Health Monitor Unit: ECG Chart
+    </ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <div class="ion-padding">
+    <ion-card>
+      <ion-card-header>
+        <ion-buttons>
+          <ion-button (click)="startECG()" color="primary" expand="block">Start ECG</ion-button>
+          <ion-button (click)="pauseECG()" color="primary" expand="block">Pause ECG</ion-button>
+          <ion-button (click)="resetECG()" color="primary" expand="block">Reset ECG</ion-button>
+          <ion-button (click)="reconnect()" color="primary" expand="block">Reconnect</ion-button>
+        </ion-buttons>
+      </ion-card-header>
+      <ion-card-content>
+        <canvas #lineCanvas style="max-height: 650px;"></canvas>
+      </ion-card-content>
+    </ion-card>
+  </div>
+</ion-content>
