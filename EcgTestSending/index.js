@@ -1,10 +1,17 @@
 let csv = require('csv');
 const io = require('socket.io-client');
+const commandLineArgs = require('command-line-args')
+const options = commandLineArgs([
+    { name: 'local', alias: 'l', type: Boolean }
+])
 
 console.log("STARTING TEST CLIENT");
+
 var WEBSOCKET = 'https://backend.healthmonitor.dev';
-//var WEBSOCKET = process.env.WEBSOCKET || 'http://localhost:8080';
-console.log("CONNECTING TO: " + WEBSOCKET);
+if (options.local) {
+    WEBSOCKET = 'http://localhost:8080';
+}
+console.log("Connecting to " + WEBSOCKET);
 const socket = io(WEBSOCKET);
 
 socket.on('connect', function(){
