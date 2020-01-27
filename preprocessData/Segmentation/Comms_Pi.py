@@ -114,6 +114,8 @@ def process_serial( rxch ):
                 pkt_data_counter.clear()
                 pkt_ecg_bytes.clear() # Buffer to hold ECG data
                 pkt_resp_bytes.clear() # Buffer to hold respiration data although its currently not used
+
+                rx_state = STATE_INIT
                 return
                 
 def main():
@@ -129,7 +131,7 @@ def main():
             byte = ser.read()
             #print(byte)
             process_serial( byte )
-            time.sleep(1)
+            #time.sleep(0.2)
 
 
 if __name__ == '__main__':
