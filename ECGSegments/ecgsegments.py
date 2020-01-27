@@ -4,11 +4,14 @@ import time
 import numpy as np
 import os
 import csv
+import sys
 
 sio = socketio.AsyncClient()
 
-WEBSOCKET_CLOUD = 'https://backend.healthmonitor.dev'
-WEBSOCKET_LOCAL = 'http://localhost:8080'
+WEBSOCKET = 'https://backend.healthmonitor.dev'
+
+if len(sys.argv) >= 2 and sys.argv[1] == 'local':
+    WEBSOCKET = 'http://localhost:8080'
 
 segment_type_dict = {}
 ECGSegments = []
@@ -66,6 +69,7 @@ def disconnect():
     print("I'm disconnected!")
 
 async def connect_to_server():
+    print('Connecting to ' + WEBSOCKET)
     await sio.connect(WEBSOCKET)
     await sio.wait()
 

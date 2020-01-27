@@ -5,11 +5,14 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
+    "local": "node index.js -l",
+    "cloud": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "command-line-args": "^5.1.1",
     "csv": "^0.3.7",
     "socket.io-client": "^2.3.0"
   }
