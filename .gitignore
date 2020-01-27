@@ -6,3 +6,5 @@ Datasets/*/*
 preprocessData/SectionData.csv
 *.pyc
 */SectionData.csv
+*/.ipynb_checkpoints/*
+*/.vscode/*
