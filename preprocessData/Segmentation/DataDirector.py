@@ -30,9 +30,25 @@ async def event_name():
 async def sendNewEcgPoint():
     if pauseEcg == False:
         Serial_Pi.LoadECGData(Ecg_Data_Buffer, PACKET_SIZE)
-        print(Ecg_Data_Buffer)
-        await sio.emit('new-ecg-point', Ecg_Data_Buffer)
-        print("Ahhhhhhhhh")     
+        #print(Ecg_Data_Buffer)
+        data = []
+        for index in range(len(Ecg_Data_Buffer)):
+            data.append({
+                'sampleNum': index, 
+                'value': int(Ecg_Data_Buffer[index]*1000)
+            })
+        print(data)
+        await sio.emit('new-ecg-point', data)
+        print("Ahhhhhhhhh")  
+
+async def background_process():
+    while not sio.sid:
+        print("Connecting...")
+        await asyncio.sleep(1)
+
+    while True:
+        print("dfhdhsf")
+        await sendNewEcgPoint()
 
 # DEFAULT EVENTS AND SETUP
 @sio.event
@@ -52,9 +68,13 @@ async def connect_to_server():
     await sio.connect(WEBSOCKET)
     await sio.wait()
 
+# async def main():
+#     await connect_to_server()
+
 async def main():
-    await connect_to_server()
-    while True:
-        await sendNewEcgPoint()
+    await asyncio.gather(
+        connect_to_server(),
+        background_process(),
+    )
     
 asyncio.run(main()) 
