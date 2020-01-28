@@ -1,7 +1,0 @@
-{
-    "python.linting.pylintEnabled": false,
-    "python.analysis.disabled": [
-        "unresolved-import"
-    ],
-    "python.pythonPath": "/Users/connorsparling/opt/anaconda3/envs/PythonSocket/bin/python"
-}
