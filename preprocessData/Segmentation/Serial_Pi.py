@@ -1,7 +1,13 @@
 import serial
 import time
 from sys import platform
+import socketio
+import asyncio
+import time
 import numpy as np
+#import os
+#import csv
+#import sys
 
 #Packet Constants
 PKT_START1 = b'\x0A'
@@ -28,11 +34,17 @@ data_counter = 0 # Data counter
 pkt_pktType = 0 # Store the packet type
 
 #pkt_data_counter = [0] * 1000 # Buffer to store the data from the packet
+#pkt_data_counter = np.array([0] * 1000, dtype=np.int8)
+#pkt_data_counter = np.empty(1000, dtype = np.int8)
 pkt_data_counter = bytearray()
 #print(pkt_data_counter)
+#pkt_ecg_bytes = np.empty(4, dtype=np.int8)
+#pkt_resp_bytes = np.empty(4, dtype=np.int8)
 pkt_ecg_bytes = bytearray() # Buffer to hold ECG data
 pkt_resp_bytes = bytearray() # Buffer to hold respiration data although its currently not used
 
+ecg_data_buffer = []
+    
 def ecsParsePacket(DataRcvPacket, num):
     if num == 0:
         return int(DataRcvPacket[num] << (num * 8))
@@ -48,26 +60,27 @@ def process_serial( rxch ):
     global pkt_data_counter
     global pkt_ecg_bytes
     global pkt_resp_bytes
+
     #print("This is the state: ", rx_state)
 
     if (rx_state == STATE_INIT):
         if (rxch == PKT_START1): 
             rx_state = STATE_SOF1_FOUND
-            return rx_state
+            return
 
     elif rx_state == STATE_SOF1_FOUND:
         if rxch == PKT_START2:
             rx_state = STATE_SOF2_FOUND
         else:
             rx_state = STATE_INIT
-        return rx_state
+        return
 
     elif rx_state == STATE_SOF2_FOUND:
             rx_state = STATE_PKTLEN_FOUND
             pkt_len = ord(rxch) 
             pkt_pos_counter = CMDIF_IND_LEN
             data_counter = 0
-            return rx_state
+            return
 
     elif rx_state == STATE_PKTLEN_FOUND:
         pkt_pos_counter += 1
@@ -79,35 +92,43 @@ def process_serial( rxch ):
                 pkt_pktType = ord(rxch)
                 return
         elif (pkt_pos_counter >= CMDIF_PKT_OVERHEAD) and (pkt_pos_counter < CMDIF_PKT_OVERHEAD + pkt_len + 1): # Read data
-            #print("noooob")
             if pkt_pktType == 2:
-                #print(data_counter)
-                #print(rxch)
-                #print(type(chr(rxch)))
-                #pkt_data_counter[data_counter] = rxch # Buffer that assigns the data separated from the packet
+                #np.append(pkt_data_counter, rxch) # Buffer that assigns the data separated from the packet
                 pkt_data_counter += rxch
                 data_counter += 1
                 return
         else:
             #print("aaaahhhh") 
             if rxch == PKT_STOP:
-                ##print("5")
+                #print("5")
+                #print(pkt_data_counter[0])
+                #print(pkt_data_counter[1])
+                #print(np.int8(pkt_data_counter[0]))
+                #np.append(pkt_ecg_bytes, pkt_data_counter[0])
+                #np.append(pkt_ecg_bytes, pkt_data_counter[1])
+                #np.append(pkt_ecg_bytes, pkt_data_counter[2])
+                #np.append(pkt_ecg_bytes, pkt_data_counter[3])
                 pkt_ecg_bytes.append(pkt_data_counter[0])
                 pkt_ecg_bytes.append(pkt_data_counter[1])
-                pkt_ecg_bytes.append(pkt_data_counter[2])
-                pkt_ecg_bytes.append(pkt_data_counter[3])
+                #pkt_ecg_bytes.append(pkt_data_counter[2])
+                #pkt_ecg_bytes.append(pkt_data_counter[3])
 
+                #np.append(pkt_resp_bytes, pkt_data_counter[4])
+                #np.append(pkt_resp_bytes, pkt_data_counter[5])
+                #np.append(pkt_resp_bytes, pkt_data_counter[6])
+                pkt_resp_bytes.append(pkt_data_counter[2])
+                pkt_resp_bytes.append(pkt_data_counter[3])
                 pkt_resp_bytes.append(pkt_data_counter[4])
                 pkt_resp_bytes.append(pkt_data_counter[5])
-                pkt_resp_bytes.append(pkt_data_counter[6])
-                pkt_resp_bytes.append(pkt_data_counter[7])
 
-                #data1 = ecsParsePacket(pkt_ecg_bytes, len(pkt_ecg_bytes) - 1)
-                data1 = pkt_ecg_bytes[0] | pkt_ecg_bytes[1] << 8
-                #data1 = data1 << 16
-                #data1 = data1 >> 16
-                #print("data 1:", data1)
-                ecg = np.float64( data1 / pow(10, 3) ) # originally was a double
+                #print(pkt_ecg_bytes.size)
+                #print(pkt_resp_bytes[1])
+                #print(pkt_resp_bytes[2])
+                #print(pkt_data_counter[0])
+                #print(pkt_data_counter[1])
+                #print(pkt_data_counter[2])
+                data1 = ecsParsePacket(pkt_ecg_bytes, len(pkt_ecg_bytes) - 1)
+                ecg = float( data1 / pow(10, 3) ) # originally was a double
                 print("ECG VALUE: ", ecg)
 
                 data2 = ecsParsePacket(pkt_resp_bytes, len(pkt_resp_bytes) - 1)
@@ -118,27 +139,26 @@ def process_serial( rxch ):
                 pkt_data_counter.clear()
                 pkt_ecg_bytes.clear() # Buffer to hold ECG data
                 pkt_resp_bytes.clear() # Buffer to hold respiration data although its currently not used
-
-                rx_state = STATE_INIT
-                return
                 
-def main():
+                rx_state = STATE_INIT
+                return ecg
 
+def UpdateBuffer( ecg, buffer ):
+    if ecg != None:
+        buffer.append(ecg)
+
+def LoadECGData( buffer, packet_size ):
     if platform == "linux" or platform == "linux2":
         ser = serial.Serial('/dev/ttyACM0', 115200) # Serial port for the raspberry pi
     else:
         ser = serial.Serial('COM5', 115200) # Serial port for windows
-    
-    #rx_state = 0
+
     while 1:
         if( ser.in_waiting > 0 ):
             byte = ser.read()
-            print(byte)
-            process_serial( byte )
+            ecg = process_serial( byte )
+            UpdateBuffer(ecg, buffer)
             #time.sleep(0.1)
-
-
-if __name__ == '__main__':
-    main()
-
+            if len(buffer) == packet_size:
+                break
         
