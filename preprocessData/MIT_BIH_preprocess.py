@@ -11,22 +11,31 @@ BEAT_TYPES = {
     'N': 'Normal beat',
     'L': 'Left bundle branch block beat',
     'R': 'Right bundle branch block beat',
-    'B': 'Bundle branch block beat (unspecified)',
+    # 'B': 'Bundle branch block beat (unspecified)',
     'A': 'Atrial premature beat',
-    'a': 'Aberrated atrial premature beat',
-    'J': 'Nodal (junctional) premature beat',
-    'S': 'Supraventricular premature or ectopic beat (atrial or nodal)',
+    # 'a': 'Aberrated atrial premature beat',
+    # 'J': 'Nodal (junctional) premature beat',
+    # 'S': 'Supraventricular premature or ectopic beat (atrial or nodal)',
     'V': 'Premature ventricular contraction',
-    'r': 'R-on-T premature ventricular contraction',
+    # 'r': 'R-on-T premature ventricular contraction',
     'F': 'Fusion of ventricular and normal beat',
-    'e': 'Atrial escape beat',
-    'j': 'Nodal (junctional) escape beat',
-    'n': 'Supraventricular escape beat (atrial or nodal)',
-    'E': 'Ventricular escape beat',
-    '/': 'Paced beat',
-    'f': 'Fusion of paced and normal beat',
-    'Q': 'Unclassifiable beat',
-    '?': 'Beat not classified during learning',
+    # 'e': 'Atrial escape beat',
+    # 'j': 'Nodal (junctional) escape beat',
+    # 'n': 'Supraventricular escape beat (atrial or nodal)',
+    # 'E': 'Ventricular escape beat',
+    # '/': 'Paced beat',
+    # 'f': 'Fusion of paced and normal beat',
+    # 'Q': 'Unclassifiable beat',
+    # '?': 'Beat not classified during learning',
+}
+
+BEAT_TYPES_INDEX = {
+    'N': 0,
+    'L': 1,
+    'R': 2,
+    'A': 3,
+    'V': 4,
+    'F': 5,
 }
 
 NON_BEAT_TYPES = {
@@ -119,7 +128,7 @@ def load_data(directory, lead_placement):
                 label = filename[:-4]
                 d = load_data_from_csv(os.path.join(directory, filename), lead_placement)
                 if d is not None:
-                    print("Label {}: {}".format(label, d.shape))
+                    print("Label {}: Successfully parsed \"{}\"".format(label, lead_placement))
                     anno_file = os.path.join(directory, str(label) + "annotations.txt")
                     p, ht, a, at = load_data_from_txt(anno_file)
                     if p is not None:
@@ -130,7 +139,7 @@ def load_data(directory, lead_placement):
                         annotations.append(a)
                         annotation_types.append(at)
                         continue
-                print("Label {}: does not contain \"{}\"".format(label, lead_placement))
+                print("Label {}: Does not contain \"{}\"".format(label, lead_placement))
     return labels, np.array(data), peaks, heartbeat_types, annotations, annotation_types
 
 def normalize_data(data):
