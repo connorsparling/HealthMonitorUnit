@@ -20,7 +20,7 @@ async def on_connect():
 async def event_name():
     print("START")
     pauseEcg = False
-    sendNewEcgPoint()
+    await sendNewEcgPoint()
     
 @sio.on('pause-ecg')
 async def event_name():
@@ -28,9 +28,11 @@ async def event_name():
     pauseEcg = True
 
 async def sendNewEcgPoint():
-    if pauseEcg == false:
-        Serial_Pi.LoadECGData(ECG_Data_Buffer, PACKET_SIZE)
-        await sio.emit('new-ecg-point', Ecg_Data_Buffer)     
+    if pauseEcg == False:
+        Serial_Pi.LoadECGData(Ecg_Data_Buffer, PACKET_SIZE)
+        print(Ecg_Data_Buffer)
+        await sio.emit('new-ecg-point', Ecg_Data_Buffer)
+        print("Ahhhhhhhhh")     
 
 # DEFAULT EVENTS AND SETUP
 @sio.event

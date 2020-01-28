@@ -1,6 +1,7 @@
 import serial
 import time
 from sys import platform
+import numpy as np
 
 #Packet Constants
 PKT_START1 = b'\x0A'
@@ -47,7 +48,7 @@ def process_serial( rxch ):
     global pkt_data_counter
     global pkt_ecg_bytes
     global pkt_resp_bytes
-    print("This is the state: ", rx_state)
+    #print("This is the state: ", rx_state)
 
     if (rx_state == STATE_INIT):
         if (rxch == PKT_START1): 
@@ -78,19 +79,19 @@ def process_serial( rxch ):
                 pkt_pktType = ord(rxch)
                 return
         elif (pkt_pos_counter >= CMDIF_PKT_OVERHEAD) and (pkt_pos_counter < CMDIF_PKT_OVERHEAD + pkt_len + 1): # Read data
-            print("noooob")
+            #print("noooob")
             if pkt_pktType == 2:
-                print(data_counter)
-                print(rxch)
+                #print(data_counter)
+                #print(rxch)
                 #print(type(chr(rxch)))
                 #pkt_data_counter[data_counter] = rxch # Buffer that assigns the data separated from the packet
                 pkt_data_counter += rxch
                 data_counter += 1
                 return
         else:
-            print("aaaahhhh") 
+            #print("aaaahhhh") 
             if rxch == PKT_STOP:
-                print("5")
+                ##print("5")
                 pkt_ecg_bytes.append(pkt_data_counter[0])
                 pkt_ecg_bytes.append(pkt_data_counter[1])
                 pkt_ecg_bytes.append(pkt_data_counter[2])
@@ -101,14 +102,17 @@ def process_serial( rxch ):
                 pkt_resp_bytes.append(pkt_data_counter[6])
                 pkt_resp_bytes.append(pkt_data_counter[7])
 
-                data1 = ecsParsePacket(pkt_ecg_bytes, len(pkt_ecg_bytes) - 1)
-                print("data 1:", data1)
-                ecg = float( data1 / pow(10, 3) ) # originally was a double
+                #data1 = ecsParsePacket(pkt_ecg_bytes, len(pkt_ecg_bytes) - 1)
+                data1 = pkt_ecg_bytes[0] | pkt_ecg_bytes[1] << 8
+                #data1 = data1 << 16
+                #data1 = data1 >> 16
+                #print("data 1:", data1)
+                ecg = np.float64( data1 / pow(10, 3) ) # originally was a double
                 print("ECG VALUE: ", ecg)
 
                 data2 = ecsParsePacket(pkt_resp_bytes, len(pkt_resp_bytes) - 1)
                 resp = float( data2 ); #(Math.pow(10, 3));
-                print("RESPIRATION VALUE: ", resp)
+                #print("RESPIRATION VALUE: ", resp)
 
                 # Clear buffers
                 pkt_data_counter.clear()
@@ -123,15 +127,15 @@ def main():
     if platform == "linux" or platform == "linux2":
         ser = serial.Serial('/dev/ttyACM0', 115200) # Serial port for the raspberry pi
     else:
-        ser = serial.Serial('COM3', 115200) # Serial port for windows
+        ser = serial.Serial('COM5', 115200) # Serial port for windows
     
     #rx_state = 0
     while 1:
         if( ser.in_waiting > 0 ):
             byte = ser.read()
-            #print(byte)
+            print(byte)
             process_serial( byte )
-            #time.sleep(0.2)
+            #time.sleep(0.1)
 
 
 if __name__ == '__main__':

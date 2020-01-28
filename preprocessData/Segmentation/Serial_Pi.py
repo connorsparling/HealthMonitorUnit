@@ -9,10 +9,6 @@ import numpy as np
 #import csv
 #import sys
 
-sio = socketio.AsyncClient()
-
-WEBSOCKET = 'https://backend.healthmonitor.dev'
-
 #Packet Constants
 PKT_START1 = b'\x0A'
 PKT_START2 = b'\xFA'
@@ -137,7 +133,7 @@ def process_serial( rxch ):
 
                 data2 = ecsParsePacket(pkt_resp_bytes, len(pkt_resp_bytes) - 1)
                 resp = float( data2 ); #(Math.pow(10, 3));
-                print("RESPIRATION VALUE: ", resp)
+                #print("RESPIRATION VALUE: ", resp)
 
                 # Clear buffers
                 pkt_data_counter.clear()
@@ -155,7 +151,7 @@ def LoadECGData( buffer, packet_size ):
     if platform == "linux" or platform == "linux2":
         ser = serial.Serial('/dev/ttyACM0', 115200) # Serial port for the raspberry pi
     else:
-        ser = serial.Serial('COM3', 115200) # Serial port for windows
+        ser = serial.Serial('COM5', 115200) # Serial port for windows
 
     while 1:
         if( ser.in_waiting > 0 ):
