@@ -1,6 +1,6 @@
 import MIT_BIH_preprocess as preproc
 
-segment_length = 100
+segment_length = 200
 filename = "Datasets/mitbih-database"
 lead_placement = "MLII"
 plot_type = None
