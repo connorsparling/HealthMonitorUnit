@@ -4,7 +4,8 @@ import Serial_Pi
 
 sio = socketio.AsyncClient()
 
-WEBSOCKET = 'https://backend.healthmonitor.dev'
+#WEBSOCKET = 'https://backend.healthmonitor.dev'
+WEBSOCKET = 'http://localhost:8080'
 PACKET_SIZE = 200
 
 pauseEcg = False
@@ -29,7 +30,8 @@ async def event_name():
 
 async def sendNewEcgPoint():
     if pauseEcg == False:
-        Serial_Pi.LoadECGData(Ecg_Data_Buffer, PACKET_SIZE)
+        Ecg_Data_Buffer = []
+        Ecg_Data_Buffer = Serial_Pi.LoadECGData(PACKET_SIZE)
         #print(Ecg_Data_Buffer)
         data = []
         for index in range(len(Ecg_Data_Buffer)):
@@ -37,9 +39,7 @@ async def sendNewEcgPoint():
                 'sampleNum': index, 
                 'value': int(Ecg_Data_Buffer[index]*1000)
             })
-        print(data)
-        await sio.emit('new-ecg-point', data)
-        print("Ahhhhhhhhh")  
+        await sio.emit('new-ecg-point', { 'data': data })
 
 async def background_process():
     while not sio.sid:
@@ -47,7 +47,7 @@ async def background_process():
         await asyncio.sleep(1)
 
     while True:
-        print("dfhdhsf")
+        await asyncio.sleep(0.01)
         await sendNewEcgPoint()
 
 # DEFAULT EVENTS AND SETUP

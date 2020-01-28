@@ -5,6 +5,7 @@ import socketio
 import asyncio
 import time
 import numpy as np
+import ctypes
 #import os
 #import csv
 #import sys
@@ -108,8 +109,8 @@ def process_serial( rxch ):
                 #np.append(pkt_ecg_bytes, pkt_data_counter[1])
                 #np.append(pkt_ecg_bytes, pkt_data_counter[2])
                 #np.append(pkt_ecg_bytes, pkt_data_counter[3])
-                pkt_ecg_bytes.append(pkt_data_counter[0])
                 pkt_ecg_bytes.append(pkt_data_counter[1])
+                pkt_ecg_bytes.append(pkt_data_counter[0])
                 #pkt_ecg_bytes.append(pkt_data_counter[2])
                 #pkt_ecg_bytes.append(pkt_data_counter[3])
 
@@ -121,15 +122,38 @@ def process_serial( rxch ):
                 pkt_resp_bytes.append(pkt_data_counter[4])
                 pkt_resp_bytes.append(pkt_data_counter[5])
 
+                #print("Segment2: {:08b}".format(pkt_data_counter[1]))
+                #print("Segment1: {:08b}".format(pkt_data_counter[0]))
+
+                data1 = pkt_ecg_bytes[0] | pkt_ecg_bytes[1] << 8
+                data1 = data1 << 16
+                data1 = data1 >> 16
+
+                #print("Data1: {:32b}".format(data1))
+
+                val = data1
+                bits = 16
+                # 2's complement
+                if (val & (1 << (bits - 1))) != 0: # if sign bit is set e.g., 8bit: 128-255
+                    val = val - (1 << bits) 
+                #print("Val: {:32b}".format(val))
+
+                #if ecg > 30000:
+                #    ecg = 65335 - ecg
+
+                ecg = float(val) / pow(10, 3)
+                #print("ECG: {:.4f}".format(ecg))
+
+
                 #print(pkt_ecg_bytes.size)
                 #print(pkt_resp_bytes[1])
                 #print(pkt_resp_bytes[2])
                 #print(pkt_data_counter[0])
                 #print(pkt_data_counter[1])
                 #print(pkt_data_counter[2])
-                data1 = ecsParsePacket(pkt_ecg_bytes, len(pkt_ecg_bytes) - 1)
-                ecg = float( data1 / pow(10, 3) ) # originally was a double
-                print("ECG VALUE: ", ecg)
+                #data1 = ecsParsePacket(pkt_ecg_bytes, len(pkt_ecg_bytes) - 1)
+                #ecg = float( data1 / pow(10, 3) ) # originally was a double
+                #print("ECG VALUE: ", ecg)
 
                 data2 = ecsParsePacket(pkt_resp_bytes, len(pkt_resp_bytes) - 1)
                 resp = float( data2 ); #(Math.pow(10, 3));
@@ -147,11 +171,14 @@ def UpdateBuffer( ecg, buffer ):
     if ecg != None:
         buffer.append(ecg)
 
-def LoadECGData( buffer, packet_size ):
+def LoadECGData(packet_size ):
+    print("sdfsdfsdfsdf")
+    buffer = []
     if platform == "linux" or platform == "linux2":
         ser = serial.Serial('/dev/ttyACM0', 115200) # Serial port for the raspberry pi
     else:
-        ser = serial.Serial('COM5', 115200) # Serial port for windows
+        # ser = serial.Serial('COM5', 115200) # Serial port for windows
+        ser = serial.Serial('/dev/cu.usbmodem14101', 115200) # Serial port for windows
 
     while 1:
         if( ser.in_waiting > 0 ):
@@ -160,5 +187,5 @@ def LoadECGData( buffer, packet_size ):
             UpdateBuffer(ecg, buffer)
             #time.sleep(0.1)
             if len(buffer) == packet_size:
-                break
+                return buffer
         
