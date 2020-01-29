@@ -24,7 +24,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('new-ecg-point', (message) => {
-    console.log(message);
+    console.log("NEW ECG POINT");
     socket.broadcast.emit('ecg-point', {data: message.data, createdAt: new Date().valueOf()}); 
   });
 

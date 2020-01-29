@@ -24,7 +24,7 @@ export class Tab2Page implements OnInit {
   ngOnInit() {
     for (let i = 0; i < this.maxDataLen; i++) {
       this.defaultChartLabels.push((i - this.maxDataLen));
-      this.defaultChartValues.push(1000);
+      this.defaultChartValues.push(0);
     }
     this.lineChart = new Chart(this.lineCanvas.nativeElement, {
       type: "line",
@@ -56,8 +56,8 @@ export class Tab2Page implements OnInit {
         scales: {
           yAxes: [{
             ticks: {
-              suggestedMin: 500,
-              suggestedMax: 1500
+              suggestedMin: -20,
+              suggestedMax: 20
             }
           }],
           xAxes: [{
