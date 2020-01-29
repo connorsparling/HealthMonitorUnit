@@ -102,7 +102,7 @@ export class Tab2Page implements OnInit {
 
   addData(label, value) {
     this.lineChart.data.labels.push(label);
-    this.lineChart.data.datasets[0].data.push(parseInt(value));
+    this.lineChart.data.datasets[0].data.push(value);
     if (this.lineChart.data.datasets[0].data.length > this.maxDataLen) {
       this.lineChart.data.labels.shift();
       this.lineChart.data.datasets[0].data.shift();

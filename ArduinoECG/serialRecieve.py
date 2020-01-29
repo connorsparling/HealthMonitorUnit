@@ -141,7 +141,7 @@ def process_serial( rxch ):
                 #if ecg > 30000:
                 #    ecg = 65335 - ecg
 
-                ecg = float(val) / pow(10, 3)
+                ecg = float(val / pow(10, 3))
                 #print("ECG: {:.4f}".format(ecg))
 
 
