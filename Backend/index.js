@@ -23,9 +23,8 @@ io.on('connection', (socket) => {
     io.emit('clear-messages'); 
   });
 
-  socket.on('new-ecg-point', (message, fn) => {
+  socket.on('new-ecg-point', (message) => {
     console.log(message);
-    fn();
     socket.broadcast.emit('ecg-point', {data: message.data, createdAt: new Date().valueOf()}); 
   });
 
