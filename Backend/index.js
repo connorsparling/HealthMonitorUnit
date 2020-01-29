@@ -28,6 +28,12 @@ io.on('connection', (socket) => {
     socket.broadcast.emit('ecg-point', {data: message.data, createdAt: new Date().valueOf()}); 
   });
 
+  socket.on('alert', function(data) {
+    console.log('ALERT!');
+    console.log(data);
+    io.emit('alert', data);
+  });
+
   socket.on('start-ecg', function() {
     console.log('START ECG');
     io.emit('start-ecg');
