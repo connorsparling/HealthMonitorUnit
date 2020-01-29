@@ -8,7 +8,7 @@ The Arduino ECG is a program that communicates with the [ADS1292R Arduino shield
 ## Web Socket Server <span style="font-size: 16px;">[(Read More)](Backend/README.md)</span>
 The backend web server uses 'Socket\.Io' and Node.js to open a web-socket server that allows the other components of the solution to communicate with each other. This server is cloud hosted and publicly accessible through https://backend.healthmonitor.dev.
 
-## Arythmia Neural Network <span style="font-size: 16px;">[(Read More)](NeuralNetwork/README.md)</span>
+## Arythmia Neural Network <span style="font-size: 16px;">[(Read More)](neuralNetwork/README.md)</span>
 The heartbeat analysis neural network is built with PyTorch and used to collect ECG data, parse it into individual heartbeat segments and pass the data through our neural network used to detect issues and anomolies in a user's heartbeat.
 
 ## Ionic Web App <span style="font-size: 16px;">[(Read More)](Frontend/README.md)</span>
