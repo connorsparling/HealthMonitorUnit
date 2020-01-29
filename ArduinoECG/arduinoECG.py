@@ -9,6 +9,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 import os
+import sys, getopt
 
 LOCAL = 'http://localhost:8080'
 CLOUD = 'https://backend.healthmonitor.dev'
@@ -87,9 +88,14 @@ def connect_to_server(server):
     sio.connect(server)
     sio.wait()
 
-def socketIOClient():
+def socketIOClient(threadname, local):
     print_log("SOCKETIO THREAD WORKING")
-    connect_to_server(LOCAL)
+    if local:
+        print_log("CONNECTING TO LOCAL SERVER")
+        connect_to_server(LOCAL)
+    else:
+        print_log("CONNECTING TO CLOUD SERVER")
+        connect_to_server(CLOUD)
 
 #== SOCKET IO EMIT QUEUE ============================================================================================================
 def socketIOEmitQueue(threadname, emit_queue):
@@ -157,13 +163,14 @@ def evaluateNNData(emit_queue, model, data):
         print_log("FUCK YOU'RE GONNA DIE => " + BEAT_TYPES[BEAT_TYPES_INDEX[result]])
         add_to_emit_queue(emit_queue, 'alert', BEAT_TYPES[BEAT_TYPES_INDEX[result]])
 
-def neuralNet(threadname, neural_net_queue, emit_queue):
+def neuralNet(threadname, neural_net_queue, emit_queue, model_path):
     time.sleep(2)
     print_log("NEURAL NET THREAD WORKING")
     if not os.path.exists("../Models/CurrentBest.pt"):
         print_log("MODEL DOES NOT EXIST")
         return
-    model = torch.load("../Models/CurrentBest.pt")
+    print_log("LOADING MODEL FROM " + model_path)
+    model = torch.load(model_path)
     model.eval()
     # REMOVE LATER ==> TEMPORARY TESTING v
     evaluateNNData(emit_queue, model, TEST_NET_N)
@@ -205,15 +212,31 @@ def segmentation(threadname, segment_queue, neural_net_queue):
             pass
 
 #== MAIN ============================================================================================================================
-def main():
+def main(argv):
+    local = False
+    model_path = "../Models/CurrentBest.pt"
+    try:
+        opts, args = getopt.getopt(argv,"hlm:",["help", "local", "model="])
+    except getopt.GetoptError:
+        print("INCORRECT FORMAT: \"arduinoECG.py [--local | -l] [--model <PATH> | -m <PATH>]\"")
+        sys.exit(2)
+    for opt, arg in opts:
+        if opt == '-h':
+            print("arduinoECG.py [--local | -l] [--model <PATH> | -m <PATH>]")
+            sys.exit()
+        elif opt in ("-l", "--local"):
+            local = True
+        elif opt in ("-m", "--model"):
+            model_path = arg
+
     emit_queue = queue.Queue(100)
     segment_queue = queue.Queue(100)
     neural_net_queue = queue.Queue(100)
 
     serial_t = threading.Thread(name="Serial", target=serial, args=("Serial", emit_queue, segment_queue))
-    socketIOClient_t = threading.Thread(name="SocketIOClient", target=socketIOClient)
+    socketIOClient_t = threading.Thread(name="SocketIOClient", target=socketIOClient, args=("SocketIOClient", local))
     socketIOEmitQueue_t = threading.Thread(name="SocketIOQueue", target=socketIOEmitQueue, args=("SocketIOQueue", emit_queue))
-    neuralNet_t = threading.Thread(name="NeuralNet", target=neuralNet, args=("NeuralNet", neural_net_queue, emit_queue))
+    neuralNet_t = threading.Thread(name="NeuralNet", target=neuralNet, args=("NeuralNet", neural_net_queue, emit_queue, model_path))
     segmentation_t = threading.Thread(name="Segmentation", target=segmentation, args=("Segmentation", segment_queue, neural_net_queue))
 
     try:
@@ -230,4 +253,4 @@ def main():
         segmentation_t.join()
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])
