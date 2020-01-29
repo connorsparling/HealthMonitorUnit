@@ -19,31 +19,24 @@ def add_to_emit_queue(queue, function, data=None):
 def add_to_queue(queue, item):
     if queue is not None:
         try:
-            queue.put(item, timeout=1)
+            queue.put(item)
         except:
+            print_log("ADD TO QUEUE ERROR")
             return False
         return True
+    print_log("QUEUE IS NONE")
     return False
 
 #== SERIAL ==========================================================================================================================
-# def send_serial_ping():
-#     while True:
-#         result = add_to_emit_queue(emit_queue, 'pingmebaby')
-#         if result:
-#             break
-#         print_log("EMIT QUEUE ADD = FALSE")
-
 def serial(threadname, emit_queue, segment_queue):
     print_log("SERIAL THREAD WORKING")
     emit_buffer = []
     #segment_buffer = []
     index = 0
     for value in serialRecieve.LoadECGData():
-        # add to 100 buffer
+        # add to emit buffer
         emit_buffer.append({'sampleNum': index, 'value': value})
-        # add to 1000 buffer
-        #segment_buffer.append(value)
-        # if 100 buffer is 100 then add to emit queue and clear
+        # if emit buffer is 100 then add to emit queue and clear
         if len(emit_buffer) >= 100:
             while True:
                 result = add_to_emit_queue(emit_queue, 'new-ecg-point', {'data': emit_buffer})
@@ -51,14 +44,17 @@ def serial(threadname, emit_queue, segment_queue):
                     break
                 print_log("EMIT QUEUE ADD = FALSE")
             emit_buffer = []
-        # if 1000 buffer is 1000 then add to segment queue and clear
-        # if len(segment_buffer) >= 1000:
-        #     while True:
-        #         result = add_to_queue(segment_queue, segment_buffer)
-        #         if result:
-        #             break
-        #         print_log("SEGMENT QUEUE ADD = FALSE")
-        #     segment_buffer = []
+
+        # add to segment buffer
+        segment_buffer.append(value)
+        # if segment buffer is 1000 then add to segment queue and clear
+        if len(segment_buffer) >= 1000:
+            while True:
+                result = add_to_queue(segment_queue, segment_buffer)
+                if result:
+                    break
+                print_log("SEGMENT QUEUE ADD = FALSE")
+            segment_buffer = []
 
 #== SOCKET IO CLIENT ================================================================================================================
 global sio
@@ -114,8 +110,8 @@ def socketIOClient():
 def socketIOEmitQueue(threadname, emit_queue):
     print_log("SOCKETIO SENDING THREAD WORKING")
     while not sio.sid:
+        # Wait to connect before continuing
         pass
-        #print_log("Connecting...")
     while True:
         try:
             item = emit_queue.get()
@@ -126,10 +122,10 @@ def socketIOEmitQueue(threadname, emit_queue):
                     else:
                         sio.emit(item['function'])
                 else:
-                    print_log("ITEM FUNCTION IS NONE")
+                    print_log("EMIT ITEM FUNCTION IS NONE")
                 emit_queue.task_done()
             else:
-                print_log("QUEUE ITEM IS NONE")
+                print_log("EMIT QUEUE ITEM IS NONE")
         except:
             pass
 
@@ -195,7 +191,7 @@ def neuralNet(threadname, neural_net_queue, emit_queue):
         #         evaluateNNData(emit_queue, model, item)
         #         neural_net_queue.task_done()
         #     else:
-        #         print_log("QUEUE ITEM IS NONE")
+        #         print_log("NN QUEUE ITEM IS NONE")
         # except:
         #     pass
 
@@ -203,7 +199,15 @@ def neuralNet(threadname, neural_net_queue, emit_queue):
 def segmentation(threadname, segment_queue, neural_net_queue):
     print_log("SEGMENTATION THREAD WORKING")
     while True:
-        time.sleep(4)
+        try:
+            item = segment_queue.get()
+            if item is not None:
+                print_log("I GOT A SEGMENT => PLEASE IMPLEMENT ME")
+                emit_queue.task_done()
+            else:
+                print_log("SEGMENT QUEUE ITEM IS NONE")
+        except:
+            pass
 
 #== MAIN ============================================================================================================================
 def main():
