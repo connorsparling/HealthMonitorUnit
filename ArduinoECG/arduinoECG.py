@@ -92,21 +92,6 @@ def socketIOClient():
     connect_to_server(LOCAL)
 
 #== SOCKET IO EMIT QUEUE ============================================================================================================
-# def send_live_segment(data):
-#     print_log('SEND NEW ECG SEGMENT')
-#     sio.emit('new-ecg-segment', data)
-
-# def send_alert(data):
-#     print_log('IMPLEMENT SEND ALERT')
-#     sio.emit('alert', data)
-
-# def send_os_data(data):
-#     print_log('IMPLEMENT SEND OS DATA')
-#     sio.emit('new-os-data', data)
-
-# def ping(data):
-#     sio.emit('pingmebaby')
-
 def socketIOEmitQueue(threadname, emit_queue):
     print_log("SOCKETIO SENDING THREAD WORKING")
     while not sio.sid:
@@ -180,20 +165,21 @@ def neuralNet(threadname, neural_net_queue, emit_queue):
         return
     model = torch.load("../Models/CurrentBest.pt")
     model.eval()
+    # REMOVE LATER ==> TEMPORARY TESTING v
+    evaluateNNData(emit_queue, model, TEST_NET_N)
+    time.sleep(5)
+    evaluateNNData(emit_queue, model, TEST_NET_BAD)
+    # REMOVE LATER ==> TEMPORARY TESTING ^
     while True:
-        evaluateNNData(emit_queue, model, TEST_NET_N)
-        time.sleep(2)
-        evaluateNNData(emit_queue, model, TEST_NET_BAD)
-        time.sleep(5)
-        # try:
-        #     item = neural_net_queue.get()
-        #     if item is not None:
-        #         evaluateNNData(emit_queue, model, item)
-        #         neural_net_queue.task_done()
-        #     else:
-        #         print_log("NN QUEUE ITEM IS NONE")
-        # except:
-        #     pass
+        try:
+            item = neural_net_queue.get()
+            if item is not None:
+                evaluateNNData(emit_queue, model, item)
+                neural_net_queue.task_done()
+            else:
+                print_log("NN QUEUE ITEM IS NONE")
+        except:
+            pass
 
 #== SEGMENTATION ====================================================================================================================
 def segmentation(threadname, segment_queue, neural_net_queue):
@@ -203,7 +189,16 @@ def segmentation(threadname, segment_queue, neural_net_queue):
             item = segment_queue.get()
             if item is not None:
                 print_log("I GOT A SEGMENT => PLEASE IMPLEMENT ME")
-                emit_queue.task_done()
+                # REMOVE LATER ==> TEMPORARY TESTING v
+                segment = TEST_NET_BAD
+                # REMOVE LATER ==> TEMPORARY TESTING ^
+
+                # We need to think of an interesting way of making sure that we look at every single heartbeat across segments
+                # | -> middle split      __m__ -> heartbeat
+                # __|____m____|__   &   __m____|____m____|   ===>    |____m____|  & |____m____|  & |____m____|
+
+                add_to_queue(segment_queue, segment)
+                segment_queue.task_done()
             else:
                 print_log("SEGMENT QUEUE ITEM IS NONE")
         except:
