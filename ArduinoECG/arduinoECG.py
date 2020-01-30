@@ -9,6 +9,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 import os
+import sys, getopt
 
 LOCAL = 'http://localhost:8080'
 CLOUD = 'https://backend.healthmonitor.dev'
@@ -55,6 +56,9 @@ def serial(threadname, emit_queue, segment_queue):
                     break
                 print_log("SEGMENT QUEUE ADD = FALSE")
             segment_buffer = []
+        # break if closing
+        if not runThreads:
+            break
 
 #== SOCKET IO CLIENT ================================================================================================================
 global sio
@@ -87,9 +91,14 @@ def connect_to_server(server):
     sio.connect(server)
     sio.wait()
 
-def socketIOClient():
+def socketIOClient(threadname, local):
     print_log("SOCKETIO THREAD WORKING")
-    connect_to_server(LOCAL)
+    if local:
+        print_log("CONNECTING TO LOCAL SERVER")
+        connect_to_server(LOCAL)
+    else:
+        print_log("CONNECTING TO CLOUD SERVER")
+        connect_to_server(CLOUD)
 
 #== SOCKET IO EMIT QUEUE ============================================================================================================
 def socketIOEmitQueue(threadname, emit_queue):
@@ -97,7 +106,7 @@ def socketIOEmitQueue(threadname, emit_queue):
     while not sio.sid:
         # Wait to connect before continuing
         pass
-    while True:
+    while runThreads:
         try:
             item = emit_queue.get()
             if item is not None:
@@ -157,20 +166,21 @@ def evaluateNNData(emit_queue, model, data):
         print_log("FUCK YOU'RE GONNA DIE => " + BEAT_TYPES[BEAT_TYPES_INDEX[result]])
         add_to_emit_queue(emit_queue, 'alert', BEAT_TYPES[BEAT_TYPES_INDEX[result]])
 
-def neuralNet(threadname, neural_net_queue, emit_queue):
+def neuralNet(threadname, neural_net_queue, emit_queue, model_path):
     time.sleep(2)
     print_log("NEURAL NET THREAD WORKING")
     if not os.path.exists("../Models/CurrentBest.pt"):
         print_log("MODEL DOES NOT EXIST")
         return
-    model = torch.load("../Models/CurrentBest.pt")
+    print_log("LOADING MODEL FROM " + model_path)
+    model = torch.load(model_path)
     model.eval()
     # REMOVE LATER ==> TEMPORARY TESTING v
     evaluateNNData(emit_queue, model, TEST_NET_N)
     time.sleep(5)
     evaluateNNData(emit_queue, model, TEST_NET_BAD)
     # REMOVE LATER ==> TEMPORARY TESTING ^
-    while True:
+    while runThreads:
         try:
             item = neural_net_queue.get()
             if item is not None:
@@ -184,7 +194,7 @@ def neuralNet(threadname, neural_net_queue, emit_queue):
 #== SEGMENTATION ====================================================================================================================
 def segmentation(threadname, segment_queue, neural_net_queue):
     print_log("SEGMENTATION THREAD WORKING")
-    while True:
+    while runThreads:
         try:
             item = segment_queue.get()
             if item is not None:
@@ -205,15 +215,33 @@ def segmentation(threadname, segment_queue, neural_net_queue):
             pass
 
 #== MAIN ============================================================================================================================
-def main():
+def main(argv):
+    global runThreads
+    runThreads = True
+    local = False
+    model_path = "../Models/CurrentBest.pt"
+    try:
+        opts, args = getopt.getopt(argv,"hlm:",["help", "local", "model="])
+    except getopt.GetoptError:
+        print("INCORRECT FORMAT: \"arduinoECG.py [--local | -l] [--model <PATH> | -m <PATH>]\"")
+        sys.exit(2)
+    for opt, arg in opts:
+        if opt == '-h':
+            print("arduinoECG.py [--local | -l] [--model <PATH> | -m <PATH>]")
+            sys.exit()
+        elif opt in ("-l", "--local"):
+            local = True
+        elif opt in ("-m", "--model"):
+            model_path = arg
+
     emit_queue = queue.Queue(100)
     segment_queue = queue.Queue(100)
     neural_net_queue = queue.Queue(100)
 
     serial_t = threading.Thread(name="Serial", target=serial, args=("Serial", emit_queue, segment_queue))
-    socketIOClient_t = threading.Thread(name="SocketIOClient", target=socketIOClient)
+    socketIOClient_t = threading.Thread(name="SocketIOClient", target=socketIOClient, args=("SocketIOClient", local))
     socketIOEmitQueue_t = threading.Thread(name="SocketIOQueue", target=socketIOEmitQueue, args=("SocketIOQueue", emit_queue))
-    neuralNet_t = threading.Thread(name="NeuralNet", target=neuralNet, args=("NeuralNet", neural_net_queue, emit_queue))
+    neuralNet_t = threading.Thread(name="NeuralNet", target=neuralNet, args=("NeuralNet", neural_net_queue, emit_queue, model_path))
     segmentation_t = threading.Thread(name="Segmentation", target=segmentation, args=("Segmentation", segment_queue, neural_net_queue))
 
     try:
@@ -222,12 +250,16 @@ def main():
         socketIOEmitQueue_t.start()
         neuralNet_t.start()
         segmentation_t.start()
-    except:
+    except KeyboardInterrupt:
+        print_log("Keyboard Interrupt: Shutting down program...")
+        runThreads = False
+        sio.disconnect()
         serial_t.join()
         socketIOClient_t.join()
         socketIOEmitQueue_t.join()
         neuralNet_t.join()
         segmentation_t.join()
+        print_log("Programm shutdown successfully")
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])

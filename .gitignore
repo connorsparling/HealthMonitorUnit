@@ -8,3 +8,4 @@ preprocessData/SectionData.csv
 */SectionData.csv
 */.ipynb_checkpoints/*
 .vscode/*
+*/.firebase/
