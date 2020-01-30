@@ -21,11 +21,15 @@ export class TabsPage implements OnInit {
       this.webSocketService.disconnect();
     });
 
-    this.webSocketService.addFromEvent('tabs', 'alert', this.presentAlertToast);
-    this.webSocketService.addFromEvent('tabs', 'segment-ok', this.presentOkToast);
+    this.webSocketService.addFromEvent('tabs', 'alert', (data) => {
+      this.presentAlertToast(data);
+    });
+    this.webSocketService.addFromEvent('tabs', 'segment-ok', () => {
+      this.presentOkToast();
+    });
   }
 
-  async presentOkToast(data) {
+  async presentOkToast() {
     const toast = await this.toastController.create({
       position: 'middle',
       message: 'Segment classified as normal',

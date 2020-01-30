@@ -56,6 +56,9 @@ def serial(threadname, emit_queue, segment_queue):
                     break
                 print_log("SEGMENT QUEUE ADD = FALSE")
             segment_buffer = []
+        # break if closing
+        if not runThreads:
+            break
 
 #== SOCKET IO CLIENT ================================================================================================================
 global sio
@@ -103,7 +106,7 @@ def socketIOEmitQueue(threadname, emit_queue):
     while not sio.sid:
         # Wait to connect before continuing
         pass
-    while True:
+    while runThreads:
         try:
             item = emit_queue.get()
             if item is not None:
@@ -177,7 +180,7 @@ def neuralNet(threadname, neural_net_queue, emit_queue, model_path):
     time.sleep(5)
     evaluateNNData(emit_queue, model, TEST_NET_BAD)
     # REMOVE LATER ==> TEMPORARY TESTING ^
-    while True:
+    while runThreads:
         try:
             item = neural_net_queue.get()
             if item is not None:
@@ -191,7 +194,7 @@ def neuralNet(threadname, neural_net_queue, emit_queue, model_path):
 #== SEGMENTATION ====================================================================================================================
 def segmentation(threadname, segment_queue, neural_net_queue):
     print_log("SEGMENTATION THREAD WORKING")
-    while True:
+    while runThreads:
         try:
             item = segment_queue.get()
             if item is not None:
@@ -213,6 +216,8 @@ def segmentation(threadname, segment_queue, neural_net_queue):
 
 #== MAIN ============================================================================================================================
 def main(argv):
+    global runThreads
+    runThreads = True
     local = False
     model_path = "../Models/CurrentBest.pt"
     try:
@@ -245,12 +250,16 @@ def main(argv):
         socketIOEmitQueue_t.start()
         neuralNet_t.start()
         segmentation_t.start()
-    except:
+    except KeyboardInterrupt:
+        print_log("Keyboard Interrupt: Shutting down program...")
+        runThreads = False
+        sio.disconnect()
         serial_t.join()
         socketIOClient_t.join()
         socketIOEmitQueue_t.join()
         neuralNet_t.join()
         segmentation_t.join()
+        print_log("Programm shutdown successfully")
 
 if __name__ == "__main__":
     main(sys.argv[1:])
