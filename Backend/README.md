@@ -1,4 +1,4 @@
-# Descriotion
+# Description
 This folder contains the code for the backend server hosted on http://backend.healthmonitor.dev
 
 # Environment Setup

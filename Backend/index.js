@@ -34,6 +34,10 @@ io.on('connection', (socket) => {
     io.emit('alert', data);
   });
 
+  socket.on('segment-ok', function() {
+    io.emit('segment-ok');
+  });
+
   socket.on('start-ecg', function() {
     console.log('START ECG');
     io.emit('start-ecg');

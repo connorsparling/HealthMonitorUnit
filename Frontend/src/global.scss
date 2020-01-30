@@ -24,3 +24,24 @@
 @import "~@ionic/angular/css/text-alignment.css";
 @import "~@ionic/angular/css/text-transformation.css";
 @import "~@ionic/angular/css/flex-utils.css";
+
+
+ion-toast.success-toast {
+    --background: #0fb31d;
+    font-weight: bold;
+    font-size: 24px;
+    --min-width: 300px;
+    --width: max-content;
+    text-align: center;
+}
+
+ion-toast.alert-toast {
+    background: #ff000052;
+    --background: #d30d0d;
+    font-weight: bold;
+    --min-width: 300px;
+    --width: max-content;
+    font-size: 24px;
+    text-align: center;
+}
+
