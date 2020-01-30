@@ -83,7 +83,7 @@ export class Tab1Page implements OnInit {
 
   constructor(
     private router: Router,
-    private webSocketService: WebSocketService
+    private webSocketService: WebSocketService,
   ) {}
 
   ngOnInit() {
