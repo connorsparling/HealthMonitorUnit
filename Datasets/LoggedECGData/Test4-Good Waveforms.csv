@@ -1,5 +1,4 @@
-Fri Jan 24 15:55:40 EST 2020
-TimeStramp,ECG,SpO2,Respiration
+'TimeStramp','ECG','SpO2','Respiration'
 15:55:40,-0.002,0.0,115.0
 15:55:40,-0.003,0.0,115.0
 15:55:40,-0.002,0.0,115.0
