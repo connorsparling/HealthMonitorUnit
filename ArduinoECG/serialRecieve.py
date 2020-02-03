@@ -164,13 +164,16 @@ def process_serial( rxch ):
                 return ecg
 
 def LoadECGData():
-    if platform == "linux" or platform == "linux2":
-        ser = serial.Serial('/dev/ttyACM0', 115200) # Serial port for the raspberry pi
-    elif platform == "darwin":
-        ser = serial.Serial('/dev/cu.usbmodem14101', 115200) # Serial port for windows
-    else:
-        ser = serial.Serial('COM5', 115200) # Serial port for windows
-
+    try:
+        if platform == "linux" or platform == "linux2":
+            ser = serial.Serial('/dev/ttyACM0', 115200) # Serial port for the raspberry pi
+        elif platform == "darwin":
+            ser = serial.Serial('/dev/cu.usbmodem14101', 115200) # Serial port for windows
+        else:
+            ser = serial.Serial('COM5', 115200) # Serial port for windows
+    except (OSError, serial.SerialException):
+        return 0
+        
     while True:
         if ser.in_waiting > 0:
             byte = ser.read()
@@ -178,7 +181,7 @@ def LoadECGData():
             if ecg is not None:
                 yield ecg
 
-
+# Create mock processing
 def Mock_Process(byte1, byte2):
     ecg_sample =  bytearray()
     ecg_sample += byte2
@@ -191,7 +194,6 @@ def Mock_Process(byte1, byte2):
     # 2's complement
     if (val & (1 << (bits - 1))) != 0: # if sign bit is set e.g., 8bit: 128-255
         val = val - (1 << bits) 
-
     ecg = float(val / pow(10, 3))
     return ecg
 

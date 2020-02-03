@@ -237,13 +237,14 @@ def segmentation(threadname, segment_queue, neural_net_queue):
                 time.sleep(1)
                 # Segment piece of 1000 and spit out an array of 10 segments
                 segments_buffer = serialSegmentation.format_data(item)
-                print_log("done segmenting")
-                print_log(segments_buffer)
+                print_log("Done segmenting")
+                #print_log(segments_buffer)
                 time.sleep(2)
                 
                 # add to neural network queue
                 for segment in segments_buffer:
                     add_to_queue(neural_net_queue, segment)
+                print_log("Added all segments to neural network queue")
                 # REMOVE LATER ==> TEMPORARY TESTING v
                 #segment = TEST_NET_BAD
                 # REMOVE LATER ==> TEMPORARY TESTING ^
@@ -264,30 +265,32 @@ def main(argv):
     global runThreads
     runThreads = True
     local = False
-    #mockMode = False
+    mockMode = False
     model_path = "../Models/CurrentBest.pt"
     try:
-        opts, args = getopt.getopt(argv,"hlm:",["help", "local", "model="])
+        opts, args = getopt.getopt(argv,"hlmq:",["help", "local", "model=", "mockMode"])
     except getopt.GetoptError:
-        print("INCORRECT FORMAT: \"arduinoECG.py [--local | -l] [--model <PATH> | -m <PATH>]\"")
+        print("INCORRECT FORMAT: \"arduinoECG.py [--local | -l] [--model <PATH> | -m <PATH>] [--mockMode]\"")
         sys.exit(2)
     for opt, arg in opts:
         if opt == '-h':
-            print("arduinoECG.py [--local | -l] [--model <PATH> | -m <PATH>]")
+            print("arduinoECG.py [--local | -l] [--model <PATH> | -m <PATH>] [--mockMode]")
             sys.exit()
         elif opt in ("-l", "--local"):
             local = True
         elif opt in ("-m", "--model"):
             model_path = arg
+        elif opt in ("--mockMode"):
+            mockMode = True
 
     emit_queue = queue.Queue()
     segment_queue = queue.Queue() # Pull off segment queue for processing
     neural_net_queue = queue.Queue()
 
-    #if mockMode == False:
-    #serial_t = threading.Thread(name="Serial", target=serial, args=("Serial", emit_queue, segment_queue))
-    #elif mockMode == True:
-    serial_t = threading.Thread(name="MockSerial", target=mock_serial, args=("Serial", emit_queue, segment_queue))
+    if mockMode == False:
+        serial_t = threading.Thread(name="Serial", target=serial, args=("Serial", emit_queue, segment_queue))
+    elif mockMode == True:
+        serial_t = threading.Thread(name="MockSerial", target=mock_serial, args=("Serial", emit_queue, segment_queue))
     
     socketIOClient_t = threading.Thread(name="SocketIOClient", target=socketIOClient, args=("SocketIOClient", local))
     socketIOEmitQueue_t = threading.Thread(name="SocketIOQueue", target=socketIOEmitQueue, args=("SocketIOQueue", emit_queue))
@@ -296,8 +299,9 @@ def main(argv):
 
     try:
         serial_t.start()
-        #socketIOClient_t.start()
-        #socketIOEmitQueue_t.start()
+        if mockMode == False:
+            socketIOClient_t.start()
+            socketIOEmitQueue_t.start()
         neuralNet_t.start()
         segmentation_t.start()
     except KeyboardInterrupt:
@@ -305,8 +309,9 @@ def main(argv):
         runThreads = False
         sio.disconnect()
         serial_t.join()
-        #socketIOClient_t.join()
-        #socketIOEmitQueue_t.join()
+        if mockMode == False:
+            socketIOClient_t.join()
+            socketIOEmitQueue_t.join()
         neuralNet_t.join()
         segmentation_t.join()
         print_log("Programm shutdown successfully")
