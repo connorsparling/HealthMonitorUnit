@@ -9,3 +9,6 @@ TODO: Make the diagram
 $CONDA_PREFIX/bin/python -m pip install requirements.txt
 $CONDA_PREFIX/bin/python arduinoECG.py
 ```
+
+# Installing pytorch
+pip install torch===1.4.0 torchvision===0.5.0 -f https://download.pytorch.org/whl/torch_stable.html

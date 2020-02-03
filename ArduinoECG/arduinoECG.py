@@ -4,6 +4,7 @@ import time
 import queue
 from log import print_log
 import serialRecieve
+import serialSegmentation
 import socketio
 import torch
 import torch.nn as nn
@@ -45,6 +46,39 @@ def serial(threadname, emit_queue, segment_queue):
                     break
                 print_log("EMIT QUEUE ADD = FALSE")
             emit_buffer = []
+
+        # add to segment buffer
+        segment_buffer.append(value)
+        # if segment buffer is 1000 then add to segment queue and clear
+        if len(segment_buffer) >= 1000:
+            while True:
+                result = add_to_queue(segment_queue, segment_buffer)
+                if result:
+                    break
+                print_log("SEGMENT QUEUE ADD = FALSE")
+            segment_buffer = []
+        # break if closing
+        if not runThreads:
+            break
+
+#== MOCK SERIAL ==========================================================================================================================
+# used to test without the arduino
+def mock_serial(threadname, emit_queue, segment_queue):
+    print_log("MOCK SERIAL THREAD WORKING")
+    emit_buffer = []
+    segment_buffer = []
+    index = 0
+    for value in serialRecieve.Mock_LoadECGData():
+        # add to emit buffer
+        emit_buffer.append({'sampleNum': index, 'value': value})
+        # if emit buffer is 100 then add to emit queue and clear
+        """ if len(emit_buffer) >= 100:
+            while True:
+                result = add_to_emit_queue(emit_queue, 'new-ecg-point', {'data': emit_buffer})
+                if result:
+                    break
+                print_log("EMIT QUEUE ADD = FALSE")
+            emit_buffer = [] """
 
         # add to segment buffer
         segment_buffer.append(value)
@@ -197,17 +231,28 @@ def segmentation(threadname, segment_queue, neural_net_queue):
     while runThreads:
         try:
             item = segment_queue.get()
+            #print(item)
             if item is not None:
                 print_log("I GOT A SEGMENT => PLEASE IMPLEMENT ME")
+                time.sleep(1)
+                # Segment piece of 1000 and spit out an array of 10 segments
+                segments_buffer = serialSegmentation.format_data(item)
+                print_log("done segmenting")
+                print_log(segments_buffer)
+                time.sleep(2)
+                
+                # add to neural network queue
+                for segment in segments_buffer:
+                    add_to_queue(neural_net_queue, segment)
                 # REMOVE LATER ==> TEMPORARY TESTING v
-                segment = TEST_NET_BAD
+                #segment = TEST_NET_BAD
                 # REMOVE LATER ==> TEMPORARY TESTING ^
 
                 # We need to think of an interesting way of making sure that we look at every single heartbeat across segments
                 # | -> middle split      __m__ -> heartbeat
                 # __|____m____|__   &   __m____|____m____|   ===>    |____m____|  & |____m____|  & |____m____|
 
-                add_to_queue(segment_queue, segment)
+                #add_to_queue(segment_queue, segment) # not sure why this is currently needed
                 segment_queue.task_done()
             else:
                 print_log("SEGMENT QUEUE ITEM IS NONE")
@@ -219,6 +264,7 @@ def main(argv):
     global runThreads
     runThreads = True
     local = False
+    #mockMode = False
     model_path = "../Models/CurrentBest.pt"
     try:
         opts, args = getopt.getopt(argv,"hlm:",["help", "local", "model="])
@@ -234,11 +280,15 @@ def main(argv):
         elif opt in ("-m", "--model"):
             model_path = arg
 
-    emit_queue = queue.Queue(100)
-    segment_queue = queue.Queue(100)
-    neural_net_queue = queue.Queue(100)
+    emit_queue = queue.Queue()
+    segment_queue = queue.Queue() # Pull off segment queue for processing
+    neural_net_queue = queue.Queue()
 
-    serial_t = threading.Thread(name="Serial", target=serial, args=("Serial", emit_queue, segment_queue))
+    #if mockMode == False:
+    #serial_t = threading.Thread(name="Serial", target=serial, args=("Serial", emit_queue, segment_queue))
+    #elif mockMode == True:
+    serial_t = threading.Thread(name="MockSerial", target=mock_serial, args=("Serial", emit_queue, segment_queue))
+    
     socketIOClient_t = threading.Thread(name="SocketIOClient", target=socketIOClient, args=("SocketIOClient", local))
     socketIOEmitQueue_t = threading.Thread(name="SocketIOQueue", target=socketIOEmitQueue, args=("SocketIOQueue", emit_queue))
     neuralNet_t = threading.Thread(name="NeuralNet", target=neuralNet, args=("NeuralNet", neural_net_queue, emit_queue, model_path))
@@ -246,8 +296,8 @@ def main(argv):
 
     try:
         serial_t.start()
-        socketIOClient_t.start()
-        socketIOEmitQueue_t.start()
+        #socketIOClient_t.start()
+        #socketIOEmitQueue_t.start()
         neuralNet_t.start()
         segmentation_t.start()
     except KeyboardInterrupt:
@@ -255,8 +305,8 @@ def main(argv):
         runThreads = False
         sio.disconnect()
         serial_t.join()
-        socketIOClient_t.join()
-        socketIOEmitQueue_t.join()
+        #socketIOClient_t.join()
+        #socketIOEmitQueue_t.join()
         neuralNet_t.join()
         segmentation_t.join()
         print_log("Programm shutdown successfully")

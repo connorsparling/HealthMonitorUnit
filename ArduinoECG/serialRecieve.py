@@ -1,14 +1,13 @@
 import serial
 import time
 from sys import platform
+from log import print_log
 import socketio
 import asyncio
 import time
 import numpy as np
 import ctypes
-#import os
-#import csv
-#import sys
+import random
 
 #Packet Constants
 PKT_START1 = b'\x0A'
@@ -62,8 +61,6 @@ def process_serial( rxch ):
     global pkt_ecg_bytes
     global pkt_resp_bytes
 
-    #print("This is the state: ", rx_state)
-
     if (rx_state == STATE_INIT):
         if (rxch == PKT_START1): 
             rx_state = STATE_SOF1_FOUND
@@ -98,8 +95,7 @@ def process_serial( rxch ):
                 pkt_data_counter += rxch
                 data_counter += 1
                 return
-        else:
-            #print("aaaahhhh") 
+        else: 
             if rxch == PKT_STOP:
                 #print("5")
                 #print(pkt_data_counter[0])
@@ -181,3 +177,38 @@ def LoadECGData():
             ecg = process_serial(byte)
             if ecg is not None:
                 yield ecg
+
+
+def Mock_Process(byte1, byte2):
+    ecg_sample =  bytearray()
+    ecg_sample += byte2
+    ecg_sample += byte1 
+    data1 = ecg_sample[0] | ecg_sample[1] << 8
+    data1 = data1 << 16
+    data1 = data1 >> 16
+    val = data1
+    bits = 16
+    # 2's complement
+    if (val & (1 << (bits - 1))) != 0: # if sign bit is set e.g., 8bit: 128-255
+        val = val - (1 << bits) 
+
+    ecg = float(val / pow(10, 3))
+    return ecg
+
+# Mocking out the arduino
+def Mock_LoadECGData():
+    BYTE1 = b'\x0A'
+    BYTE2 = b'\xFF'
+    BYTE3 = b'\x00'
+    BYTE4 = b'\x11'
+    while True:     
+        num = random.uniform(0,1)
+        if num < 0.25:
+            ecg = Mock_Process(BYTE1, BYTE2)
+        elif 0.25 < num < 0.5:
+            ecg = Mock_Process(BYTE2, BYTE1)
+        elif 0.5 < num < 0.75:
+            ecg = Mock_Process(BYTE3, BYTE4)
+        else:
+            ecg = Mock_Process(BYTE4, BYTE3)
+        yield abs(ecg)
