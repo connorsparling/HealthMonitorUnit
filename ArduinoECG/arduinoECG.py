@@ -192,8 +192,11 @@ def evaluateNNData(emit_queue, model, data):
     x = torch.tensor(data).float()
     x = x.view(1, 1, x.size(0))
     resValues, resIndices = torch.max(model(x), 1)
+    #resIndices = torch.max(model(x), 1) 
+    print_log("beginning")
+    time.sleep(1)
     result = resIndices[0]
-
+    print_log("made it here")
     if result == 0:
         print_log("YEAH WE GOOD BABY")
     else:
@@ -210,15 +213,19 @@ def neuralNet(threadname, neural_net_queue, emit_queue, model_path):
     model = torch.load(model_path)
     model.eval()
     # REMOVE LATER ==> TEMPORARY TESTING v
-    evaluateNNData(emit_queue, model, TEST_NET_N)
-    time.sleep(5)
-    evaluateNNData(emit_queue, model, TEST_NET_BAD)
+    #evaluateNNData(emit_queue, model, TEST_NET_N)
+    #time.sleep(5)
+    #evaluateNNData(emit_queue, model, TEST_NET_BAD)
     # REMOVE LATER ==> TEMPORARY TESTING ^
     while runThreads:
         try:
             item = neural_net_queue.get()
+            #print_log("aahhh")           
             if item is not None:
+                #print_log(len(item))
                 evaluateNNData(emit_queue, model, item)
+                print_log("done Evaluating")
+                time.sleep(1)
                 neural_net_queue.task_done()
             else:
                 print_log("NN QUEUE ITEM IS NONE")
@@ -306,6 +313,7 @@ def main(argv):
         segmentation_t.start()
     except KeyboardInterrupt:
         print_log("Keyboard Interrupt: Shutting down program...")
+        sys.exit()
         runThreads = False
         sio.disconnect()
         serial_t.join()
