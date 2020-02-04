@@ -33,8 +33,11 @@ def add_to_queue(queue, item):
 def serial(threadname, emit_queue, segment_queue):
     print_log("SERIAL THREAD WORKING")
     emit_buffer = []
-    #segment_buffer = []
+    segment_buffer = []
     index = 0
+    if serialRecieve.LoadECGData() == 0:
+        print_log("Something went wrong with the serial connection")
+
     for value in serialRecieve.LoadECGData():
         # add to emit buffer
         emit_buffer.append({'sampleNum': index, 'value': value})
@@ -72,6 +75,7 @@ def mock_serial(threadname, emit_queue, segment_queue):
         # add to emit buffer
         emit_buffer.append({'sampleNum': index, 'value': value})
         # if emit buffer is 100 then add to emit queue and clear
+        # currently dont send data to web app for mock out
         """ if len(emit_buffer) >= 100:
             while True:
                 result = add_to_emit_queue(emit_queue, 'new-ecg-point', {'data': emit_buffer})
@@ -233,7 +237,6 @@ def segmentation(threadname, segment_queue, neural_net_queue):
     while runThreads:
         try:
             item = segment_queue.get()
-            print(item)
             if item is not None:
                 print_log("I GOT A SEGMENT => PLEASE IMPLEMENT ME")
                 time.sleep(1)

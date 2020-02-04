@@ -170,7 +170,7 @@ def LoadECGData():
         elif platform == "darwin":
             ser = serial.Serial('/dev/cu.usbmodem14101', 115200) # Serial port for windows
         else:
-            ser = serial.Serial('COM5', 115200) # Serial port for windows
+            ser = serial.Serial('COM3', 115200) # Serial port for windows
     except (OSError, serial.SerialException):
         return 0
         
