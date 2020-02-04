@@ -192,11 +192,7 @@ def evaluateNNData(emit_queue, model, data):
     x = torch.tensor(data).float()
     x = x.view(1, 1, x.size(0))
     resValues, resIndices = torch.max(model(x), 1)
-    #resIndices = torch.max(model(x), 1) 
-    print_log("beginning")
-    time.sleep(1)
     result = resIndices[0]
-    print_log("made it here")
     if result == 0:
         print_log("YEAH WE GOOD BABY")
     else:
@@ -204,7 +200,7 @@ def evaluateNNData(emit_queue, model, data):
         add_to_emit_queue(emit_queue, 'alert', BEAT_TYPES[BEAT_TYPES_INDEX[result]])
 
 def neuralNet(threadname, neural_net_queue, emit_queue, model_path):
-    time.sleep(2)
+    time.sleep(1)
     print_log("NEURAL NET THREAD WORKING")
     if not os.path.exists("../Models/CurrentBest.pt"):
         print_log("MODEL DOES NOT EXIST")
@@ -212,6 +208,7 @@ def neuralNet(threadname, neural_net_queue, emit_queue, model_path):
     print_log("LOADING MODEL FROM " + model_path)
     model = torch.load(model_path)
     model.eval()
+    time.sleep(1)
     # REMOVE LATER ==> TEMPORARY TESTING v
     #evaluateNNData(emit_queue, model, TEST_NET_N)
     #time.sleep(5)
@@ -220,12 +217,10 @@ def neuralNet(threadname, neural_net_queue, emit_queue, model_path):
     while runThreads:
         try:
             item = neural_net_queue.get()
-            #print_log("aahhh")           
             if item is not None:
-                #print_log(len(item))
                 evaluateNNData(emit_queue, model, item)
-                print_log("done Evaluating")
-                time.sleep(1)
+                print_log("Done Evaluating")
+                time.sleep(2)
                 neural_net_queue.task_done()
             else:
                 print_log("NN QUEUE ITEM IS NONE")
@@ -238,16 +233,14 @@ def segmentation(threadname, segment_queue, neural_net_queue):
     while runThreads:
         try:
             item = segment_queue.get()
-            #print(item)
+            print(item)
             if item is not None:
                 print_log("I GOT A SEGMENT => PLEASE IMPLEMENT ME")
                 time.sleep(1)
                 # Segment piece of 1000 and spit out an array of 10 segments
                 segments_buffer = serialSegmentation.format_data(item)
                 print_log("Done segmenting")
-                #print_log(segments_buffer)
-                time.sleep(2)
-                
+                time.sleep(1)
                 # add to neural network queue
                 for segment in segments_buffer:
                     add_to_queue(neural_net_queue, segment)

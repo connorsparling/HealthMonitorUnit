@@ -5,7 +5,7 @@ from log import print_log
 from scipy import signal
 from scipy.signal import find_peaks
 
-SAMPLE_SIZE = 100 # number of points we are putting through the neural network
+SAMPLE_SIZE = 200 # number of points we are putting through the neural network
 
 def get_peaks(data):
     data = list(data)
