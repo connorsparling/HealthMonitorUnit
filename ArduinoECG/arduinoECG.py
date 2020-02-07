@@ -213,11 +213,6 @@ def neuralNet(threadname, neural_net_queue, emit_queue, model_path):
     model = torch.load(model_path)
     model.eval()
     time.sleep(1)
-    # REMOVE LATER ==> TEMPORARY TESTING v
-    #evaluateNNData(emit_queue, model, TEST_NET_N)
-    #time.sleep(5)
-    #evaluateNNData(emit_queue, model, TEST_NET_BAD)
-    # REMOVE LATER ==> TEMPORARY TESTING ^
     while runThreads:
         try:
             item = neural_net_queue.get()
@@ -248,15 +243,6 @@ def segmentation(threadname, segment_queue, neural_net_queue):
                 for segment in segments_buffer:
                     add_to_queue(neural_net_queue, segment)
                 print_log("Added all segments to neural network queue")
-                # REMOVE LATER ==> TEMPORARY TESTING v
-                #segment = TEST_NET_BAD
-                # REMOVE LATER ==> TEMPORARY TESTING ^
-
-                # We need to think of an interesting way of making sure that we look at every single heartbeat across segments
-                # | -> middle split      __m__ -> heartbeat
-                # __|____m____|__   &   __m____|____m____|   ===>    |____m____|  & |____m____|  & |____m____|
-
-                #add_to_queue(segment_queue, segment) # not sure why this is currently needed
                 segment_queue.task_done()
             else:
                 print_log("SEGMENT QUEUE ITEM IS NONE")
@@ -286,9 +272,9 @@ def main(argv):
         elif opt in ("--mockMode"):
             mockMode = True
 
-    emit_queue = queue.Queue()
-    segment_queue = queue.Queue() # Pull off segment queue for processing
-    neural_net_queue = queue.Queue()
+    emit_queue = queue.Queue(1000)
+    segment_queue = queue.Queue(1000) # Pull off segment queue for processing
+    neural_net_queue = queue.Queue(1000)
 
     if mockMode == False:
         serial_t = threading.Thread(name="Serial", target=serial, args=("Serial", emit_queue, segment_queue))
@@ -302,9 +288,8 @@ def main(argv):
 
     try:
         serial_t.start()
-        if mockMode == False:
-            socketIOClient_t.start()
-            socketIOEmitQueue_t.start()
+        socketIOClient_t.start()
+        socketIOEmitQueue_t.start()
         neuralNet_t.start()
         segmentation_t.start()
     except KeyboardInterrupt:
@@ -313,9 +298,8 @@ def main(argv):
         runThreads = False
         sio.disconnect()
         serial_t.join()
-        if mockMode == False:
-            socketIOClient_t.join()
-            socketIOEmitQueue_t.join()
+        socketIOClient_t.join()
+        socketIOEmitQueue_t.join()
         neuralNet_t.join()
         segmentation_t.join()
         print_log("Programm shutdown successfully")
