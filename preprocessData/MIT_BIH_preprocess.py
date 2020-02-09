@@ -18,7 +18,7 @@ BEAT_TYPES = {
     # 'S': 'Supraventricular premature or ectopic beat (atrial or nodal)',
     'V': 'Premature ventricular contraction',
     # 'r': 'R-on-T premature ventricular contraction',
-  #  'F': 'Fusion of ventricular and normal beat',
+    'F': 'Fusion of ventricular and normal beat',
     # 'e': 'Atrial escape beat',
     # 'j': 'Nodal (junctional) escape beat',
     # 'n': 'Supraventricular escape beat (atrial or nodal)',
@@ -35,7 +35,7 @@ BEAT_TYPES_INDEX = {
     'R': 2,
     'A': 3,
     'V': 4,
-    #'F': 5,
+    'F': 5,
 }
 
 NON_BEAT_TYPES = {

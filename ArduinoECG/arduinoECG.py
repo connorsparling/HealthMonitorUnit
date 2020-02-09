@@ -32,7 +32,7 @@ def add_to_queue(queue, item):
 def serial(threadname, emit_queue, segment_queue):
     print_log("SERIAL THREAD WORKING")
     emit_buffer = []
-    #segment_buffer = []
+    segment_buffer = []
     index = 0
     for value in serialRecieve.LoadECGData():
         # add to emit buffer
@@ -135,30 +135,62 @@ BEAT_TYPES = {
     'F': 'Fusion of ventricular and normal beat',
 }
 
-BEAT_TYPES_INDEX = ['N','L','R','A','V','F']
+BEAT_TYPES_INDEX = ['N', 'L','R','A','V','F']
 
-class NeuralNetwork(nn.Module):
-    def __init__(self, input_size, kernel_size, hidden_size, drop_prob):
-        super(NeuralNetwork, self).__init__()
-        self.model = nn.Sequential(
-            nn.Conv1d(1, 1, kernel_size),
-            nn.Flatten(),
-            nn.Dropout(drop_prob),
-            nn.Linear(input_size - kernel_size + 1, hidden_size[0]),
-            nn.Linear(hidden_size[0], hidden_size[1]),
-            nn.Linear(hidden_size[1], hidden_size[2]),
-            #nn.LogSoftmax(dim=1), # NLLLoss
-            nn.Softmax(dim=1) # MSELoss
-        )
+class BinaryNeuralNetwork(nn.Module):
+    def __init__(self):
+        super(BinaryNeuralNetwork, self).__init__()
+        layer_size = [200, 128, 64, 32, 16, 1]
+        self.model = nn.Sequential()
+
+        in_size = layer_size[0]
+        index = 1
+        for out_size in layer_size[1:]:
+            self.model.add_module('fc' + str(index), nn.Linear(in_size, out_size))
+            self.model.add_module('sigmoid' + str(index), nn.Sigmoid())
+            in_size = out_size
+            index += 1
         
     def forward(self, x):
         return self.model(x)
 
-def evaluateNNData(emit_queue, model, data):
+class ArrythmiaNeuralNetwork(nn.Module):
+    def __init__(self, input_size, kernel_size, hidden_size, drop_prob):
+        super(ArrythmiaNeuralNetwork, self).__init__()
+        self.model = nn.Sequential()
+        
+        in_size = input_size
+        index = 1
+        for out_size in hidden_size:
+            self.model.add_module('fc' + str(index), nn.Linear(in_size, out_size))
+            if out_size != 5:
+                self.model.add_module('sigmoid' + str(index), nn.Sigmoid())
+            in_size = out_size
+            index += 1
+        self.model.add_module('softmax', nn.Softmax(dim=1))
+        
+    def forward(self, x):
+        return self.model(x)
+
+def get_output(x):
+    beat_type = torch.tensor(np.array([-1]))
+    out = binary_model(x)
+    if out > 0.5:
+        out = arrythmia_model(x)
+        resValues, resIndices = torch.max(out, 1)
+        beat_type = resIndices
+    return beat_type
+
+def evaluateNNData(emit_queue, binary_model, arrythmia_model, data):
     x = torch.tensor(data).float()
-    x = x.view(1, 1, x.size(0))
-    resValues, resIndices = torch.max(model(x), 1)
-    result = resIndices[0]
+    x = x.view(1, x.size(0))
+
+    result = 0
+    out = binary_model(x)
+    if out > 0.5:
+        out = arrythmia_model(x)
+        resValues, resIndices = torch.max(out, 1)
+        result = resIndices[0] + 1
 
     if result == 0:
         print_log("YEAH WE GOOD BABY")
@@ -168,23 +200,33 @@ def evaluateNNData(emit_queue, model, data):
 
 def neuralNet(threadname, neural_net_queue, emit_queue, model_path):
     time.sleep(2)
+    MODEL_FOLDER = "../Models"
+    binary_path = os.path.join(MODEL_FOLDER, 'BinaryNN.pt')
+    arrythmia_path = os.path.join(MODEL_FOLDER, 'ArrithmiaNN.pt')
+
     print_log("NEURAL NET THREAD WORKING")
-    if not os.path.exists("../Models/CurrentBest.pt"):
-        print_log("MODEL DOES NOT EXIST")
+    if not os.path.exists(binary_path):
+        print_log("BINARY MODEL DOES NOT EXIST")
         return
-    print_log("LOADING MODEL FROM " + model_path)
-    model = torch.load(model_path)
-    model.eval()
+    if not os.path.exists(arrythmia_path):
+        print_log("ARRYTHMIA MODEL DOES NOT EXIST")
+        return
+    print_log("LOADING BINARY MODEL FROM " + binary_path)
+    binary_model = torch.load(binary_path)
+    binary_model.eval()
+    print_log("LOADING ARRYTHMIA MODEL FROM " + arrythmia_path)
+    arrythmia_model = torch.load(arrythmia_path)
+    arrythmia_model.eval()
     # REMOVE LATER ==> TEMPORARY TESTING v
-    evaluateNNData(emit_queue, model, TEST_NET_N)
-    time.sleep(5)
-    evaluateNNData(emit_queue, model, TEST_NET_BAD)
+    # evaluateNNData(emit_queue, binary_model, arrythmia_model, TEST_NET_N)
+    # time.sleep(5)
+    # evaluateNNData(emit_queue, binary_model, arrythmia_model, TEST_NET_BAD)
     # REMOVE LATER ==> TEMPORARY TESTING ^
     while runThreads:
         try:
             item = neural_net_queue.get()
             if item is not None:
-                evaluateNNData(emit_queue, model, item)
+                evaluateNNData(emit_queue, binary_model, arrythmia_model, item)
                 neural_net_queue.task_done()
             else:
                 print_log("NN QUEUE ITEM IS NONE")
