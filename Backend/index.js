@@ -28,13 +28,12 @@ io.on('connection', (socket) => {
   });
 
   socket.on('alert', function(data) {
-    console.log('ALERT!');
-    console.log(data);
-    io.emit('alert', data);
+    console.log('ALERT! ' + data);
+    socket.broadcast.emit('alert', data);
   });
 
   socket.on('segment-ok', function() {
-    io.emit('segment-ok');
+    socket.broadcast.emit('segment-ok');
   });
 
   socket.on('start-ecg', function() {

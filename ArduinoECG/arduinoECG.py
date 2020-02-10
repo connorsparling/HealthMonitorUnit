@@ -11,6 +11,7 @@ import torch.nn as nn
 import numpy as np
 import os
 import sys, getopt
+import csv
 
 LOCAL = 'http://localhost:8080'
 CLOUD = 'https://backend.healthmonitor.dev'
@@ -30,7 +31,7 @@ def add_to_queue(queue, item):
     return False
 
 #== SERIAL ==========================================================================================================================
-def serial(threadname, emit_queue, segment_queue):
+def serial(threadname, emit_queue, segment_queue, emit_buf_size=100, segment_buf_size=200):
     print_log("SERIAL THREAD WORKING")
     emit_buffer = []
     segment_buffer = []
@@ -42,7 +43,7 @@ def serial(threadname, emit_queue, segment_queue):
         # add to emit buffer
         emit_buffer.append({'sampleNum': index, 'value': value})
         # if emit buffer is 100 then add to emit queue and clear
-        if len(emit_buffer) >= 100:
+        if len(emit_buffer) >= emit_buf_size: # 100:
             while True:
                 result = add_to_emit_queue(emit_queue, 'new-ecg-point', {'data': emit_buffer})
                 if result:
@@ -53,7 +54,7 @@ def serial(threadname, emit_queue, segment_queue):
         # add to segment buffer
         segment_buffer.append(value)
         # if segment buffer is 1000 then add to segment queue and clear
-        if len(segment_buffer) >= 1000:
+        if len(segment_buffer) >= segment_buf_size: # 1000:
             while True:
                 result = add_to_queue(segment_queue, segment_buffer)
                 if result:
@@ -173,7 +174,7 @@ BEAT_TYPES = {
     'F': 'Fusion of ventricular and normal beat',
 }
 
-BEAT_TYPES_INDEX = ['N', 'L','R','A','V','F']
+ARRYTHMIA_TYPES_INDEX = ['L','R','A','V','F']
 
 class BinaryNeuralNetwork(nn.Module):
     def __init__(self):
@@ -220,21 +221,18 @@ def get_output(x):
     return beat_type
 
 def evaluateNNData(emit_queue, binary_model, arrythmia_model, data):
-    x = torch.tensor(data).float()
+    x = torch.tensor(data).type(torch.FloatTensor)
     x = x.view(1, x.size(0))
 
-    result = 0
     out = binary_model(x)
     if out > 0.5:
         out = arrythmia_model(x)
         resValues, resIndices = torch.max(out, 1)
-        result = resIndices[0] + 1
-
-    if result == 0:
-        print_log("YEAH WE GOOD BABY")
+        result = resIndices[0]
+        print_log("FUCK YOU'RE GONNA DIE => " + BEAT_TYPES[ARRYTHMIA_TYPES_INDEX[result]])
+        add_to_emit_queue(emit_queue, 'alert', BEAT_TYPES[ARRYTHMIA_TYPES_INDEX[result]])
     else:
-        print_log("FUCK YOU'RE GONNA DIE => " + BEAT_TYPES[BEAT_TYPES_INDEX[result]])
-        add_to_emit_queue(emit_queue, 'alert', BEAT_TYPES[BEAT_TYPES_INDEX[result]])
+        print_log("YEAH WE GOOD BABY")        
 
 def neuralNet(threadname, neural_net_queue, emit_queue, model_path):
     time.sleep(2)
@@ -274,34 +272,25 @@ def neuralNet(threadname, neural_net_queue, emit_queue, model_path):
 #== SEGMENTATION ====================================================================================================================
 def segmentation(threadname, segment_queue, neural_net_queue):
     print_log("SEGMENTATION THREAD WORKING")
-    while runThreads:
-        try:
-            item = segment_queue.get()
-            if item is not None:
-                print_log("I GOT A SEGMENT => PLEASE IMPLEMENT ME")
-                time.sleep(1)
-                # Segment piece of 1000 and spit out an array of 10 segments
-                segments_buffer = serialSegmentation.format_data(item)
-                print_log("Done segmenting")
-                time.sleep(1)
-                # add to neural network queue
-                for segment in segments_buffer:
-                    add_to_queue(neural_net_queue, segment)
-                print_log("Added all segments to neural network queue")
-                # REMOVE LATER ==> TEMPORARY TESTING v
-                #segment = TEST_NET_BAD
-                # REMOVE LATER ==> TEMPORARY TESTING ^
-
-                # We need to think of an interesting way of making sure that we look at every single heartbeat across segments
-                # | -> middle split      __m__ -> heartbeat
-                # __|____m____|__   &   __m____|____m____|   ===>    |____m____|  & |____m____|  & |____m____|
-
-                #add_to_queue(segment_queue, segment) # not sure why this is currently needed
-                segment_queue.task_done()
-            else:
-                print_log("SEGMENT QUEUE ITEM IS NONE")
-        except:
-            pass
+    transfer_buffer = []
+    with open('../Datasets/ARD.csv', mode='w', newline='') as save_file:
+        csv_writer = csv.writer(save_file)
+        while runThreads:
+            try:
+                item = segment_queue.get()
+                if item is not None:
+                    # Segment piece of 1000 and spit out an array of 10 segments
+                    transfer_buffer, segments_buffer = serialSegmentation.format_data(transfer_buffer, item)
+                    # add to neural network queue
+                    for segment in segments_buffer:
+                        # csv_writer.writerow(segment) # Write live collection data to file
+                        add_to_queue(neural_net_queue, segment)
+                    segment_queue.task_done()
+                else:
+                    print_log("SEGMENT QUEUE ITEM IS NONE")
+            except:
+                pass
+    save_file.close()
 
 #== MAIN ============================================================================================================================
 def main(argv):
@@ -310,6 +299,8 @@ def main(argv):
     local = False
     mockMode = False
     model_path = "../Models/CurrentBest.pt"
+    emit_buf_size = 100
+    segment_buf_size = 200
     try:
         opts, args = getopt.getopt(argv,"hlmq:",["help", "local", "model=", "mockMode"])
     except getopt.GetoptError:
@@ -321,6 +312,7 @@ def main(argv):
             sys.exit()
         elif opt in ("-l", "--local"):
             local = True
+            emit_buf_size = 50
         elif opt in ("-m", "--model"):
             model_path = arg
         elif opt in ("--mockMode"):
@@ -331,7 +323,7 @@ def main(argv):
     neural_net_queue = queue.Queue()
 
     if mockMode == False:
-        serial_t = threading.Thread(name="Serial", target=serial, args=("Serial", emit_queue, segment_queue))
+        serial_t = threading.Thread(name="Serial", target=serial, args=("Serial", emit_queue, segment_queue, emit_buf_size, segment_buf_size))
     elif mockMode == True:
         serial_t = threading.Thread(name="MockSerial", target=mock_serial, args=("Serial", emit_queue, segment_queue))
     

@@ -10,7 +10,7 @@ SAMPLE_SIZE = 200 # number of points we are putting through the neural network
 def get_peaks(data):
     data = list(data)
     # hard coded value that has shown to get the best peak accuracy (lower is more peaks, higher is less peaks)
-    peaks, _ = find_peaks(data, prominence=0.15) 
+    peaks, _ = find_peaks(data, prominence=0.6) 
     return peaks
 
 # Split take the peaks and split the segments based on the half way point between peaks
@@ -44,25 +44,39 @@ def resize_section(section, desired):
     newData = signal.resample(section, desired)
     return newData
 
-def format_data(item):
-    # data that is 1000 floats long
-    print_log("Segmenting piece of 1000")
+def format_data(transfer_buffer, item):    
     data = normalize_data(item)
-    segments = segment_data(data)
-    segmentsBuffer = []
-    print_log("Retrieved the following number of segments")
-    print_log(len(segments))
-    j = 0
-    for i in range(len(segments)):
-        if i > 50:
-            break # break if it has to many segments means theres an error
-        segment = []
-        while True:
-            segment.append(data[j])
-            j += 1
-            if j == segments[i]:
-                break
-        newData = []
-        newData = resize_section(segment, SAMPLE_SIZE)
-        segmentsBuffer.append(newData)
-    return segmentsBuffer
+    buf = transfer_buffer + data
+    segments = segment_data(buf)
+    segments_buffer = []
+    seg_count = len(segments)
+    print_log("Retrieved {} segments".format(seg_count))
+
+    transfer_buffer = []
+    i = 0
+    current_segment = []
+    for index in range(len(buf)):
+        if i >= seg_count:
+            transfer_buffer.append(buf[index])
+        else:
+            current_segment.append(buf[index])
+            if index == segments[i]:
+                normalized_segment = resize_section(current_segment, SAMPLE_SIZE)
+                segments_buffer.append(normalized_segment)
+                current_segment = []
+                i += 1
+
+    # j = 0
+    # for i in range(len(segments)):
+    #     if i > 50:
+    #         break # break if it has to many segments means theres an error
+    #     segment = []
+    #     while True:
+    #         segment.append(data[j])
+    #         j += 1
+    #         if j == segments[i]:
+    #             break
+    #     newData = []
+    #     newData = resize_section(segment, SAMPLE_SIZE)
+    #     segments_buffer.append(newData)
+    return transfer_buffer, segments_buffer
