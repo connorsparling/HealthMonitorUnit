@@ -172,6 +172,7 @@ def LoadECGData():
         else:
             ser = serial.Serial('COM3', 115200) # Serial port for windows
     except (OSError, serial.SerialException):
+        print_log("FUCK ERROR")
         return 0
         
     while True:

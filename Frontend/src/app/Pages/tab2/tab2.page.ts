@@ -85,7 +85,7 @@ export class Tab2Page implements OnInit {
       this.removeData();
     });
 
-    this.webSocketService.addFromEvent(this.router.url, 'ecg-point', data => {
+    this.webSocketService.addFromEvent(this.router.url, 'new-ecg-point', data => {
       this.addArrayData(data['data']);
     });
   }

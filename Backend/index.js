@@ -16,7 +16,7 @@ io.on('connection', (socket) => {
   });
   
   socket.on('send-message', (message) => {
-    io.emit('message', {msg: message.text, user: socket.username, createdAt: new Date()});    
+    io.emit('message', {msg: message.text, user: socket.username, createdAt: new Date()});
   });
 
   socket.on('clear-stream-data', () => {
@@ -24,8 +24,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('new-ecg-point', (message) => {
-    console.log("NEW ECG POINT");
-    socket.broadcast.emit('ecg-point', {data: message.data, createdAt: new Date().valueOf()}); 
+    socket.broadcast.emit('new-ecg-point', {data: message.data, createdAt: new Date().valueOf()}); 
   });
 
   socket.on('alert', function(data) {

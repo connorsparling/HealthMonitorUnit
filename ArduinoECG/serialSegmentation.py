@@ -52,12 +52,14 @@ def format_data(item):
     segmentsBuffer = []
     print_log("Retrieved the following number of segments")
     print_log(len(segments))
+    j = 0
     for i in range(len(segments)):
         if i > 50:
             break # break if it has to many segments means theres an error
         segment = []
-        for j in range(len(data)):
+        while True:
             segment.append(data[j])
+            j += 1
             if j == segments[i]:
                 break
         newData = []

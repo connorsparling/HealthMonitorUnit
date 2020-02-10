@@ -16,7 +16,7 @@ LOCAL = 'http://localhost:8080'
 CLOUD = 'https://backend.healthmonitor.dev'
 
 def add_to_emit_queue(queue, function, data=None):
-    add_to_queue(queue, {'function': function, 'data': data})
+    return add_to_queue(queue, {'function': function, 'data': data})
 
 def add_to_queue(queue, item):
     if queue is not None:
