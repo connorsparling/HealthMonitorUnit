@@ -11,6 +11,7 @@ import torch.nn as nn
 import numpy as np
 import os
 import sys, getopt
+import Testing as test
 
 LOCAL = 'http://localhost:8080'
 CLOUD = 'https://backend.healthmonitor.dev'
@@ -40,15 +41,15 @@ def serial(threadname, emit_queue, segment_queue):
 
     for value in serialRecieve.LoadECGData():
         # add to emit buffer
-        emit_buffer.append({'sampleNum': index, 'value': value})
-        # if emit buffer is 100 then add to emit queue and clear
-        if len(emit_buffer) >= 100:
-            while True:
-                result = add_to_emit_queue(emit_queue, 'new-ecg-point', {'data': emit_buffer})
-                if result:
-                    break
-                print_log("EMIT QUEUE ADD = FALSE")
-            emit_buffer = []
+        # emit_buffer.append({'sampleNum': index, 'value': value})
+        # # if emit buffer is 100 then add to emit queue and clear
+        # if len(emit_buffer) >= 100:
+        #     while True:
+        #         result = add_to_emit_queue(emit_queue, 'new-ecg-point', {'data': emit_buffer})
+        #         if result:
+        #             break
+        #         print_log("EMIT QUEUE ADD = FALSE")
+        #     emit_buffer = []
 
         # add to segment buffer
         segment_buffer.append(value)
@@ -213,6 +214,11 @@ def neuralNet(threadname, neural_net_queue, emit_queue, model_path):
     model = torch.load(model_path)
     model.eval()
     time.sleep(1)
+    # REMOVE LATER ==> TEMPORARY TESTING v
+    #evaluateNNData(emit_queue, model, TEST_NET_N)
+    #time.sleep(5)
+    #evaluateNNData(emit_queue, model, TEST_NET_BAD)
+    # REMOVE LATER ==> TEMPORARY TESTING ^
     while runThreads:
         try:
             item = neural_net_queue.get()
@@ -243,11 +249,44 @@ def segmentation(threadname, segment_queue, neural_net_queue):
                 for segment in segments_buffer:
                     add_to_queue(neural_net_queue, segment)
                 print_log("Added all segments to neural network queue")
+                # REMOVE LATER ==> TEMPORARY TESTING v
+                #segment = TEST_NET_BAD
+                # REMOVE LATER ==> TEMPORARY TESTING ^
+
+                # We need to think of an interesting way of making sure that we look at every single heartbeat across segments
+                # | -> middle split      __m__ -> heartbeat
+                # __|____m____|__   &   __m____|____m____|   ===>    |____m____|  & |____m____|  & |____m____|
+
+                #add_to_queue(segment_queue, segment) # not sure why this is currently needed
                 segment_queue.task_done()
             else:
                 print_log("SEGMENT QUEUE ITEM IS NONE")
         except:
             pass
+
+def testECGData():
+    segment_buffer = []
+    index = 0
+    if serialRecieve.LoadECGData() == 0:
+        print_log("Something went wrong with the serial connection")
+    while True:
+        for value in serialRecieve.LoadECGData():
+            print("im in")
+            # add to segment buffer
+            segment_buffer.append(value)
+            # if segment buffer is 1000 then add to segment queue and clear
+            print(len(segment_buffer))
+            if len(segment_buffer) >= 1000:
+                #output_buffer = serialSegmentation.format_data(item)
+                print("before")
+                serialSegmentation.do_nothing()
+                test.display_buffer(output_buffer)
+                
+            # add to neural network queue
+            #for segment in output_buffer:
+            #    add_to_queue(neural_net_queue, segment)
+            #print_log("Added all segments to neural network queue")
+        
 
 #== MAIN ============================================================================================================================
 def main(argv):
@@ -255,15 +294,16 @@ def main(argv):
     runThreads = True
     local = False
     mockMode = False
+    testMode = False
     model_path = "../Models/CurrentBest.pt"
     try:
-        opts, args = getopt.getopt(argv,"hlmq:",["help", "local", "model=", "mockMode"])
+        opts, args = getopt.getopt(argv,"hlmq:",["help", "local", "model=", "mockMode", "test"])
     except getopt.GetoptError:
-        print("INCORRECT FORMAT: \"arduinoECG.py [--local | -l] [--model <PATH> | -m <PATH>] [--mockMode]\"")
+        print("INCORRECT FORMAT: \"arduinoECG.py [--local | -l] [--model <PATH> | -m <PATH>] [--mockMode] [--test]\"")
         sys.exit(2)
     for opt, arg in opts:
         if opt == '-h':
-            print("arduinoECG.py [--local | -l] [--model <PATH> | -m <PATH>] [--mockMode]")
+            print("arduinoECG.py [--local | -l] [--model <PATH> | -m <PATH>] [--mockMode] [--test]")
             sys.exit()
         elif opt in ("-l", "--local"):
             local = True
@@ -271,10 +311,16 @@ def main(argv):
             model_path = arg
         elif opt in ("--mockMode"):
             mockMode = True
+        elif opt in ("--test"):
+            testMode = True
 
     emit_queue = queue.Queue(1000)
     segment_queue = queue.Queue(1000) # Pull off segment queue for processing
     neural_net_queue = queue.Queue(1000)
+
+    if testMode == True:
+        print("IN TEST MODE")
+        testECGData()
 
     if mockMode == False:
         serial_t = threading.Thread(name="Serial", target=serial, args=("Serial", emit_queue, segment_queue))
@@ -288,8 +334,9 @@ def main(argv):
 
     try:
         serial_t.start()
-        socketIOClient_t.start()
-        socketIOEmitQueue_t.start()
+        #if mockMode == False:
+        #    socketIOClient_t.start()
+        #    socketIOEmitQueue_t.start()
         neuralNet_t.start()
         segmentation_t.start()
     except KeyboardInterrupt:
@@ -298,8 +345,9 @@ def main(argv):
         runThreads = False
         sio.disconnect()
         serial_t.join()
-        socketIOClient_t.join()
-        socketIOEmitQueue_t.join()
+        #if mockMode == False:
+        #    socketIOClient_t.join()
+        #    socketIOEmitQueue_t.join()
         neuralNet_t.join()
         segmentation_t.join()
         print_log("Programm shutdown successfully")
