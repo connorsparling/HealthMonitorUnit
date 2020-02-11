@@ -8,6 +8,6 @@
 
 <ion-content>
   <div class="message-grid">
-    <span *ngFor="let ecgDataPoint of ecgData">{{ ecgDataPoint.sampleNum }}: {{ ecgDataPoint.value }}</span>
+    <span *ngFor="let message of logMessages">{{ message }}</span>
   </div>
 </ion-content>

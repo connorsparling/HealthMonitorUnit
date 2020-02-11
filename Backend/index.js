@@ -36,6 +36,11 @@ io.on('connection', (socket) => {
     socket.broadcast.emit('segment-ok');
   });
 
+  socket.on('test-segment', function(data) {
+    console.log('test segment received');
+    io.emit('test-segment', data);
+  });
+
   socket.on('start-ecg', function() {
     console.log('START ECG');
     io.emit('start-ecg');
@@ -57,7 +62,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('new-ecg-segments', function(data) {
-    console.log('GET ECG SEGMENTS');
+    console.log('NEW ECG SEGMENTS');
     io.emit('new-ecg-segments', data);
   });
 
