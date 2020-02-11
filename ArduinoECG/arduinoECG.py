@@ -23,7 +23,7 @@ segment_queue = queue.Queue() # Pull off segment queue for processing
 global neural_net_queue
 neural_net_queue = queue.Queue()
 
-global runMockECG
+mockECGLock = threading.Lock()
 runMockECG = False
 
 BEAT_TYPES = {
@@ -53,7 +53,7 @@ def add_to_queue(queue, item):
     return False
 
 #== SERIAL ==========================================================================================================================
-def serial(threadname, emit_buf_size=100, segment_buf_size=200):
+def serial(threadname, emit_buf_size=100, segment_buf_size=200, *args, **kwargs):
     print_log("SERIAL THREAD WORKING")
     emit_buffer = []
     segment_buffer = []
@@ -89,14 +89,21 @@ def serial(threadname, emit_buf_size=100, segment_buf_size=200):
 
 #== MOCK SERIAL ==========================================================================================================================
 # used to test without the arduino
-def mock_serial(threadname, emit_buf_size=100, segment_buf_size=200):
+def mock_serial(threadname, emit_buf_size=100, segment_buf_size=200, *args, **kwargs):
     print_log("MOCK SERIAL THREAD WORKING")
     emit_buffer = []
     segment_buffer = []
     index = 0
+    global runMockECG
     while runThreads:
-        while not runMockECG:
+        while True:
+            mockECGLock.acquire()
+            if runMockECG:
+                mockECGLock.release()
+                break
+            mockECGLock.release()
             time.sleep(1)
+        print_log("STARTED MOCK ECG")
         for value in serialRecieve.Mock_LoadECGData():
             time.sleep(0.008)
             # add to emit buffer
@@ -182,11 +189,19 @@ def get_segments():
 
 @sio.on('start-ecg')
 def start_ecg():
+    print_log("START MOCK ECG")
+    global runMockECG
+    mockECGLock.acquire()
     runMockECG = True
+    mockECGLock.release()
 
 @sio.on('pause-ecg')
 def pause_ecg():
+    print_log("PAUSE MOCK ECG")
+    global runMockECG
+    mockECGLock.acquire()
     runMockECG = False
+    mockECGLock.release()
 
 @sio.on('pingmebaby')
 def ping_me_baby():
@@ -209,7 +224,7 @@ def connect_to_server(server):
     sio.connect(server)
     sio.wait()
 
-def socketIOClient(threadname, local):
+def socketIOClient(threadname, local, *args, **kwargs):
     print_log("SOCKETIO THREAD WORKING")
     if local:
         print_log("CONNECTING TO LOCAL SERVER")
@@ -219,7 +234,7 @@ def socketIOClient(threadname, local):
         connect_to_server(CLOUD)
 
 #== SOCKET IO EMIT QUEUE ============================================================================================================
-def socketIOEmitQueue(threadname):
+def socketIOEmitQueue(threadname, *args, **kwargs):
     print_log("SOCKETIO SENDING THREAD WORKING")
     while not sio.sid:
         # Wait to connect before continuing
@@ -377,7 +392,7 @@ def main(argv):
     segment_type_dict = {}
     global ECGSegments
     ECGSegments = []
-    load_ECG_segments()
+    #load_ECG_segments()
 
     MODEL_FOLDER = "../Models"
     binary_path = os.path.join(MODEL_FOLDER, 'BinaryNN.pt')
@@ -399,11 +414,8 @@ def main(argv):
     arrythmia_model = torch.load(arrythmia_path)
     arrythmia_model.eval()
 
-    if mockMode == False:
-        serial_t = threading.Thread(name="Serial", target=serial, args=("Serial", emit_buf_size, segment_buf_size))
-    elif mockMode == True:
-        serial_t = threading.Thread(name="MockSerial", target=mock_serial, args=("Serial", emit_buf_size, segment_buf_size))
-    
+    serial_t = threading.Thread(name="Serial", target=serial, args=("Serial", emit_buf_size, segment_buf_size))
+    mock_serial_t = threading.Thread(name="MockSerial", target=mock_serial, args=("Serial", emit_buf_size, segment_buf_size))
     socketIOClient_t = threading.Thread(name="SocketIOClient", target=socketIOClient, args=("SocketIOClient", local))
     socketIOEmitQueue_t = threading.Thread(name="SocketIOQueue", target=socketIOEmitQueue, args=("SocketIOQueue"))
     neuralNet_t = threading.Thread(name="NeuralNet", target=neuralNet, args=("NeuralNet"))
@@ -411,9 +423,9 @@ def main(argv):
 
     try:
         serial_t.start()
-        if mockMode == False:
-            socketIOClient_t.start()
-            socketIOEmitQueue_t.start()
+        mock_serial_t.start()
+        socketIOClient_t.start()
+        socketIOEmitQueue_t.start()
         neuralNet_t.start()
         segmentation_t.start()
     except KeyboardInterrupt:
@@ -422,9 +434,9 @@ def main(argv):
         runThreads = False
         sio.disconnect()
         serial_t.join()
-        if mockMode == False:
-            socketIOClient_t.join()
-            socketIOEmitQueue_t.join()
+        mock_serial_t.join()
+        socketIOClient_t.join()
+        socketIOEmitQueue_t.join()
         neuralNet_t.join()
         segmentation_t.join()
         print_log("Programm shutdown successfully")
