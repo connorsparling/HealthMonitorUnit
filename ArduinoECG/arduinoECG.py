@@ -104,7 +104,7 @@ def mock_serial(threadname, emit_buf_size=100, segment_buf_size=200, *args, **kw
             mockECGLock.release()
             time.sleep(1)
         print_log("STARTED MOCK ECG")
-        for value in serialRecieve.Mock_LoadECGData():
+        for value in serialRecieve.Mock_LoadECGData_File():
             time.sleep(0.008)
             # add to emit buffer
             emit_buffer.append({'sampleNum': index, 'value': value})
@@ -346,24 +346,24 @@ def neuralNet(threadname, *args, **kwargs):
 def segmentation(threadname, *args, **kwargs):
     print_log("SEGMENTATION THREAD WORKING")
     transfer_buffer = []
-    with open('../Datasets/ARD.csv', mode='w', newline='') as save_file:
-        csv_writer = csv.writer(save_file)
-        while runThreads:
-            try:
-                item = segment_queue.get()
-                if item is not None:
-                    # Segment piece of 1000 and spit out an array of 10 segments
-                    transfer_buffer, segments_buffer = serialSegmentation.format_data(transfer_buffer, item)
-                    # add to neural network queue
-                    for segment in segments_buffer:
-                        # csv_writer.writerow(segment) # Write live collection data to file
-                        add_to_queue(neural_net_queue, segment)
-                    segment_queue.task_done()
-                else:
-                    print_log("SEGMENT QUEUE ITEM IS NONE")
-            except:
-                pass
-    save_file.close()
+    #with open('../Datasets/ARD.csv', mode='w', newline='') as save_file:
+        #csv_writer = csv.writer(save_file)
+    while runThreads:
+        try:
+            item = segment_queue.get()
+            if item is not None:
+                # Segment piece of 1000 and spit out an array of 10 segments
+                transfer_buffer, segments_buffer = serialSegmentation.format_data(transfer_buffer, item)
+                # add to neural network queue
+                for segment in segments_buffer:
+                    # csv_writer.writerow(segment) # Write live collection data to file
+                    add_to_queue(neural_net_queue, segment)
+                segment_queue.task_done()
+            else:
+                print_log("SEGMENT QUEUE ITEM IS NONE")
+        except:
+            pass
+    #save_file.close()
 
 #== MAIN ============================================================================================================================
 def main(argv):

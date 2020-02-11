@@ -1,5 +1,6 @@
 import serial
 import time
+import csv
 from sys import platform
 from log import print_log
 import socketio
@@ -8,6 +9,9 @@ import time
 import numpy as np
 import ctypes
 import random
+
+# filename
+FILENAME = "MockData/ECGDataStream.csv"
 
 #Packet Constants
 PKT_START1 = b'\x0A'
@@ -97,63 +101,31 @@ def process_serial( rxch ):
                 return
         else: 
             if rxch == PKT_STOP:
-                #print("5")
-                #print(pkt_data_counter[0])
-                #print(pkt_data_counter[1])
-                #print(np.int8(pkt_data_counter[0]))
-                #np.append(pkt_ecg_bytes, pkt_data_counter[0])
-                #np.append(pkt_ecg_bytes, pkt_data_counter[1])
-                #np.append(pkt_ecg_bytes, pkt_data_counter[2])
-                #np.append(pkt_ecg_bytes, pkt_data_counter[3])
                 pkt_ecg_bytes.append(pkt_data_counter[1])
                 pkt_ecg_bytes.append(pkt_data_counter[0])
-                #pkt_ecg_bytes.append(pkt_data_counter[2])
-                #pkt_ecg_bytes.append(pkt_data_counter[3])
 
-                #np.append(pkt_resp_bytes, pkt_data_counter[4])
-                #np.append(pkt_resp_bytes, pkt_data_counter[5])
-                #np.append(pkt_resp_bytes, pkt_data_counter[6])
                 pkt_resp_bytes.append(pkt_data_counter[2])
                 pkt_resp_bytes.append(pkt_data_counter[3])
                 pkt_resp_bytes.append(pkt_data_counter[4])
                 pkt_resp_bytes.append(pkt_data_counter[5])
 
-                #print("Segment2: {:08b}".format(pkt_data_counter[1]))
-                #print("Segment1: {:08b}".format(pkt_data_counter[0]))
-
                 data1 = pkt_ecg_bytes[0] | pkt_ecg_bytes[1] << 8
                 data1 = data1 << 16
                 data1 = data1 >> 16
-
-                #print("Data1: {:32b}".format(data1))
 
                 val = data1
                 bits = 16
                 # 2's complement
                 if (val & (1 << (bits - 1))) != 0: # if sign bit is set e.g., 8bit: 128-255
                     val = val - (1 << bits) 
-                #print("Val: {:32b}".format(val))
 
                 #if ecg > 30000:
                 #    ecg = 65335 - ecg
 
                 ecg = float(val / pow(10, 3))
-                #print("ECG: {:.4f}".format(ecg))
-
-
-                #print(pkt_ecg_bytes.size)
-                #print(pkt_resp_bytes[1])
-                #print(pkt_resp_bytes[2])
-                #print(pkt_data_counter[0])
-                #print(pkt_data_counter[1])
-                #print(pkt_data_counter[2])
-                #data1 = ecsParsePacket(pkt_ecg_bytes, len(pkt_ecg_bytes) - 1)
-                #ecg = float( data1 / pow(10, 3) ) # originally was a double
-                #print("ECG VALUE: ", ecg)
 
                 data2 = ecsParsePacket(pkt_resp_bytes, len(pkt_resp_bytes) - 1)
                 resp = float( data2 ); #(Math.pow(10, 3));
-                #print("RESPIRATION VALUE: ", resp)
 
                 # Clear buffers
                 pkt_data_counter.clear()
@@ -196,7 +168,17 @@ def Mock_Process(byte1, byte2):
     if (val & (1 << (bits - 1))) != 0: # if sign bit is set e.g., 8bit: 128-255
         val = val - (1 << bits) 
     ecg = float(val / pow(10, 3))
-    return ecg
+    return ecg    
+
+# Mocking out the arduino
+def Mock_LoadECGData_File():
+    if FILENAME is not None:
+        with open(FILENAME) as csv_file:
+            csv_reader = csv.reader(csv_file, delimiter=',')
+            for data in csv_reader:
+                yield float(data[0])
+    return 0
+
 
 # Mocking out the arduino
 def Mock_LoadECGData():
