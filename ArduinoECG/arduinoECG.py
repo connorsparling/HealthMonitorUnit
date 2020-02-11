@@ -23,6 +23,9 @@ segment_queue = queue.Queue() # Pull off segment queue for processing
 global neural_net_queue
 neural_net_queue = queue.Queue()
 
+global runMockECG
+runMockECG = False
+
 BEAT_TYPES = {
     'N': 'Normal beat',
     'L': 'Left bundle branch block beat',
@@ -86,37 +89,41 @@ def serial(threadname, emit_buf_size=100, segment_buf_size=200):
 
 #== MOCK SERIAL ==========================================================================================================================
 # used to test without the arduino
-def mock_serial(threadname):
+def mock_serial(threadname, emit_buf_size=100, segment_buf_size=200):
     print_log("MOCK SERIAL THREAD WORKING")
     emit_buffer = []
     segment_buffer = []
     index = 0
-    for value in serialRecieve.Mock_LoadECGData():
-        # add to emit buffer
-        emit_buffer.append({'sampleNum': index, 'value': value})
-        # if emit buffer is 100 then add to emit queue and clear
-        # currently dont send data to web app for mock out
-        """ if len(emit_buffer) >= 100:
-            while True:
-                result = add_to_emit_queue('new-ecg-point', {'data': emit_buffer})
-                if result:
-                    break
-                print_log("EMIT QUEUE ADD = FALSE")
-            emit_buffer = [] """
+    while runThreads:
+        while not runMockECG:
+            time.sleep(1)
+        for value in serialRecieve.Mock_LoadECGData():
+            time.sleep(0.008)
+            # add to emit buffer
+            emit_buffer.append({'sampleNum': index, 'value': value})
+            # if emit buffer is 100 then add to emit queue and clear
+            # currently dont send data to web app for mock out
+            if len(emit_buffer) >= emit_buf_size:
+                while True:
+                    result = add_to_emit_queue('new-ecg-point', {'data': emit_buffer})
+                    if result:
+                        break
+                    print_log("EMIT QUEUE ADD = FALSE")
+                emit_buffer = []
 
-        # add to segment buffer
-        segment_buffer.append(value)
-        # if segment buffer is 1000 then add to segment queue and clear
-        if len(segment_buffer) >= 1000:
-            while True:
-                result = add_to_queue(segment_queue, segment_buffer)
-                if result:
-                    break
-                print_log("SEGMENT QUEUE ADD = FALSE")
-            segment_buffer = []
-        # break if closing
-        if not runThreads:
-            break
+            # add to segment buffer
+            segment_buffer.append(value)
+            # if segment buffer is 1000 then add to segment queue and clear
+            if len(segment_buffer) >= segment_buf_size:
+                while True:
+                    result = add_to_queue(segment_queue, segment_buffer)
+                    if result:
+                        break
+                    print_log("SEGMENT QUEUE ADD = FALSE")
+                segment_buffer = []
+            # break if closing
+            if not runThreads or not runMockECG:
+                break
 
 #== SOCKET IO CLIENT ================================================================================================================
 global sio
@@ -172,6 +179,14 @@ def get_segments():
     print_log('get-ecg-segments')
     segments = get_ECG_segments()
     sio.emit('new-ecg-segments', segments)
+
+@sio.on('start-ecg')
+def start_ecg():
+    runMockECG = True
+
+@sio.on('pause-ecg')
+def pause_ecg():
+    runMockECG = False
 
 @sio.on('pingmebaby')
 def ping_me_baby():
@@ -292,7 +307,7 @@ def evaluateNNData(data):
     except:
         print_log("NN EVAL ERROR")     
 
-def neuralNet(threadname, model_path):
+def neuralNet(threadname, *args, **kwargs):
     time.sleep(2)
     while runThreads:
         try:
@@ -303,9 +318,9 @@ def neuralNet(threadname, model_path):
                 result = evaluateNNData(item)
                 if result >= 0:
                     print_log("FUCK YOU'RE GONNA DIE => " + BEAT_TYPES[ARRYTHMIA_TYPES_INDEX[result]])
-                    add_to_emit_queue('alert', BEAT_TYPES[ARRYTHMIA_TYPES_INDEX[result]])
+                    #add_to_emit_queue('alert', BEAT_TYPES[ARRYTHMIA_TYPES_INDEX[result]])
                 else:
-                    print_log("YEAH WE GOOD BABY")   
+                    print_log("YEAH WE GOOD BABY")
                 neural_net_queue.task_done()
             else:
                 print_log("NN QUEUE ITEM IS NONE")
@@ -313,7 +328,7 @@ def neuralNet(threadname, model_path):
             pass
 
 #== SEGMENTATION ====================================================================================================================
-def segmentation(threadname):
+def segmentation(threadname, *args, **kwargs):
     print_log("SEGMENTATION THREAD WORKING")
     transfer_buffer = []
     with open('../Datasets/ARD.csv', mode='w', newline='') as save_file:
@@ -341,24 +356,21 @@ def main(argv):
     runThreads = True
     local = False
     mockMode = False
-    model_path = "../Models/CurrentBest.pt"
     emit_buf_size = 100
     segment_buf_size = 200
     try:
-        opts, args = getopt.getopt(argv,"hlmq:",["help", "local", "model=", "mockMode"])
+        opts, args = getopt.getopt(argv,"hlm",["help", "local", "mockMode"])
     except getopt.GetoptError:
-        print("INCORRECT FORMAT: \"arduinoECG.py [--local | -l] [--model <PATH> | -m <PATH>] [--mockMode]\"")
+        print("INCORRECT FORMAT: \"arduinoECG.py [--local | -l] [--mockMode | -m]\"")
         sys.exit(2)
     for opt, arg in opts:
         if opt == '-h':
-            print("arduinoECG.py [--local | -l] [--model <PATH> | -m <PATH>] [--mockMode]")
+            print("arduinoECG.py [--local | -l] [--mockMode | -m]")
             sys.exit()
         elif opt in ("-l", "--local"):
             local = True
             emit_buf_size = 50
-        elif opt in ("-m", "--model"):
-            model_path = arg
-        elif opt in ("--mockMode"):
+        elif opt in ("-m", "--mockMode"):
             mockMode = True
 
     global segment_type_dict
@@ -390,11 +402,11 @@ def main(argv):
     if mockMode == False:
         serial_t = threading.Thread(name="Serial", target=serial, args=("Serial", emit_buf_size, segment_buf_size))
     elif mockMode == True:
-        serial_t = threading.Thread(name="MockSerial", target=mock_serial, args=("Serial"))
+        serial_t = threading.Thread(name="MockSerial", target=mock_serial, args=("Serial", emit_buf_size, segment_buf_size))
     
     socketIOClient_t = threading.Thread(name="SocketIOClient", target=socketIOClient, args=("SocketIOClient", local))
     socketIOEmitQueue_t = threading.Thread(name="SocketIOQueue", target=socketIOEmitQueue, args=("SocketIOQueue"))
-    neuralNet_t = threading.Thread(name="NeuralNet", target=neuralNet, args=("NeuralNet", model_path))
+    neuralNet_t = threading.Thread(name="NeuralNet", target=neuralNet, args=("NeuralNet"))
     segmentation_t = threading.Thread(name="Segmentation", target=segmentation, args=("Segmentation"))
 
     try:
