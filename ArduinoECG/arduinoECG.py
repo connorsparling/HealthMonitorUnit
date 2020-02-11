@@ -72,18 +72,19 @@ def mock_serial(threadname, emit_queue, segment_queue):
     emit_buffer = []
     segment_buffer = []
     index = 0
-    for value in serialRecieve.Mock_LoadECGData():
+    for value in serialRecieve.Mock_LoadECGData_File():
+        time.sleep(0.008)
         # add to emit buffer
         emit_buffer.append({'sampleNum': index, 'value': value})
         # if emit buffer is 100 then add to emit queue and clear
         # currently dont send data to web app for mock out
-        """ if len(emit_buffer) >= 100:
+        if len(emit_buffer) >= 100:
             while True:
                 result = add_to_emit_queue(emit_queue, 'new-ecg-point', {'data': emit_buffer})
                 if result:
                     break
                 print_log("EMIT QUEUE ADD = FALSE")
-            emit_buffer = [] """
+            emit_buffer = []
 
         # add to segment buffer
         segment_buffer.append(value)
@@ -230,7 +231,7 @@ def evaluateNNData(emit_queue, binary_model, arrythmia_model, data):
         resValues, resIndices = torch.max(out, 1)
         result = resIndices[0]
         print_log("FUCK YOU'RE GONNA DIE => " + BEAT_TYPES[ARRYTHMIA_TYPES_INDEX[result]])
-        add_to_emit_queue(emit_queue, 'alert', BEAT_TYPES[ARRYTHMIA_TYPES_INDEX[result]])
+        #add_to_emit_queue(emit_queue, 'alert', BEAT_TYPES[ARRYTHMIA_TYPES_INDEX[result]])
     else:
         print_log("YEAH WE GOOD BABY")        
 
@@ -273,24 +274,24 @@ def neuralNet(threadname, neural_net_queue, emit_queue, model_path):
 def segmentation(threadname, segment_queue, neural_net_queue):
     print_log("SEGMENTATION THREAD WORKING")
     transfer_buffer = []
-    with open('../Datasets/ARD.csv', mode='w', newline='') as save_file:
-        csv_writer = csv.writer(save_file)
-        while runThreads:
-            try:
-                item = segment_queue.get()
-                if item is not None:
-                    # Segment piece of 1000 and spit out an array of 10 segments
-                    transfer_buffer, segments_buffer = serialSegmentation.format_data(transfer_buffer, item)
-                    # add to neural network queue
-                    for segment in segments_buffer:
-                        # csv_writer.writerow(segment) # Write live collection data to file
-                        add_to_queue(neural_net_queue, segment)
-                    segment_queue.task_done()
-                else:
-                    print_log("SEGMENT QUEUE ITEM IS NONE")
-            except:
-                pass
-    save_file.close()
+    #with open('../Datasets/ARD.csv', mode='w', newline='') as save_file:
+        #csv_writer = csv.writer(save_file)
+    while runThreads:
+        try:
+            item = segment_queue.get()
+            if item is not None:
+                # Segment piece of 1000 and spit out an array of 10 segments
+                transfer_buffer, segments_buffer = serialSegmentation.format_data(transfer_buffer, item)
+                # add to neural network queue
+                for segment in segments_buffer:
+                    # csv_writer.writerow(segment) # Write live collection data to file
+                    add_to_queue(neural_net_queue, segment)
+                segment_queue.task_done()
+            else:
+                print_log("SEGMENT QUEUE ITEM IS NONE")
+        except:
+            pass
+    #save_file.close()
 
 #== MAIN ============================================================================================================================
 def main(argv):
@@ -334,9 +335,8 @@ def main(argv):
 
     try:
         serial_t.start()
-        if mockMode == False:
-            socketIOClient_t.start()
-            socketIOEmitQueue_t.start()
+        socketIOClient_t.start()
+        socketIOEmitQueue_t.start()
         neuralNet_t.start()
         segmentation_t.start()
     except KeyboardInterrupt:
@@ -345,9 +345,8 @@ def main(argv):
         runThreads = False
         sio.disconnect()
         serial_t.join()
-        if mockMode == False:
-            socketIOClient_t.join()
-            socketIOEmitQueue_t.join()
+        socketIOClient_t.join()
+        socketIOEmitQueue_t.join()
         neuralNet_t.join()
         segmentation_t.join()
         print_log("Programm shutdown successfully")
