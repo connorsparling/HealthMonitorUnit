@@ -11,7 +11,7 @@ import ctypes
 import random
 
 # filename
-FILENAME = "MockData/ECGDataStream.csv"
+FILENAME = "../Datasets/ECGDataStream.csv"
 
 #Packet Constants
 PKT_START1 = b'\x0A'

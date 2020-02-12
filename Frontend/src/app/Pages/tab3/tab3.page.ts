@@ -17,15 +17,23 @@ export class Tab3Page implements OnInit {
 
   ngOnInit() {
     this.webSocketService.addFromEvent(this.router.url, 'new-ecg-point', data => {
-      this.addData('Received new ECG data: ' + data.toString());
+      console.log(data);
+      const items = data.data.map(item => item.value);
+      console.log(items);
+      //this.addData({type: 'data', message: JSON.stringify(items)});
+      this.addData({type: 'normal', message: 'New ECG data'});
     });
 
     this.webSocketService.addFromEvent(this.router.url, 'alert', data => {
-      this.addData('Received Alert: ' + data);
+      this.addData({type: 'alert', message: 'Alert: ' + data});
     });
 
     this.webSocketService.addFromEvent(this.router.url, 'segment-ok', data => {
-      this.addData('Received segment OK');
+      this.addData({type: 'ok', message: 'Segment OK'});
+    });
+
+    this.webSocketService.addFromEvent(this.router.url, 'new-ecg-segments', data => {
+      this.addData({type: 'normal', message: 'New ECG segments'});
     });
   }
 

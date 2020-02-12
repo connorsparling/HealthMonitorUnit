@@ -2,3 +2,15 @@
   display: flex;
   flex-direction: column-reverse;
 }
+
+.alert-message {
+  color: red;
+}
+
+.ok-message {
+  color: green;
+}
+
+.data-message {
+  font-size: 8px;
+}

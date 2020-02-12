@@ -39,6 +39,7 @@ ARRYTHMIA_TYPES_INDEX = ['L','R','A','V','F']
 
 def add_to_emit_queue(function, data=None):
     print_log(function)
+    global emit_queue
     return add_to_queue(emit_queue, {'function': function, 'data': data})
 
 def add_to_queue(queue, item):
@@ -58,6 +59,7 @@ def serial(threadname, emit_buf_size=100, segment_buf_size=200, *args, **kwargs)
     emit_buffer = []
     segment_buffer = []
     index = 0
+    global segment_queue
     if serialRecieve.LoadECGData() == 0:
         print_log("Something went wrong with the serial connection")
 
@@ -94,43 +96,47 @@ def mock_serial(threadname, emit_buf_size=100, segment_buf_size=200, *args, **kw
     emit_buffer = []
     segment_buffer = []
     index = 0
+    global segment_queue
     global runMockECG
     while runThreads:
-        while True:
-            mockECGLock.acquire()
-            if runMockECG:
-                mockECGLock.release()
-                break
-            mockECGLock.release()
-            time.sleep(1)
-        print_log("STARTED MOCK ECG")
-        for value in serialRecieve.Mock_LoadECGData_File():
-            time.sleep(0.008)
-            # add to emit buffer
-            emit_buffer.append({'sampleNum': index, 'value': value})
-            # if emit buffer is 100 then add to emit queue and clear
-            # currently dont send data to web app for mock out
-            if len(emit_buffer) >= emit_buf_size:
-                while True:
-                    result = add_to_emit_queue('new-ecg-point', {'data': emit_buffer})
-                    if result:
-                        break
-                    print_log("EMIT QUEUE ADD = FALSE")
-                emit_buffer = []
+        time.sleep(1)
+        run = False
+        mockECGLock.acquire()
+        if runMockECG:
+            run = True
+        mockECGLock.release()
+        if run:
+            print_log("STARTED MOCK ECG")
+            for value in serialRecieve.Mock_LoadECGData_File():
+                time.sleep(0.008)
+                # add to emit buffer
+                emit_buffer.append({'sampleNum': index, 'value': value})
+                # if emit buffer is 100 then add to emit queue and clear
+                # currently dont send data to web app for mock out
+                if len(emit_buffer) >= emit_buf_size:
+                    while True:
+                        result = add_to_emit_queue('new-ecg-point', {'data': emit_buffer})
+                        if result:
+                            break
+                        print_log("EMIT QUEUE ADD = FALSE")
+                    emit_buffer = []
 
-            # add to segment buffer
-            segment_buffer.append(value)
-            # if segment buffer is 1000 then add to segment queue and clear
-            if len(segment_buffer) >= segment_buf_size:
-                while True:
-                    result = add_to_queue(segment_queue, segment_buffer)
-                    if result:
-                        break
-                    print_log("SEGMENT QUEUE ADD = FALSE")
-                segment_buffer = []
-            # break if closing
-            if not runThreads or not runMockECG:
-                break
+                # add to segment buffer
+                segment_buffer.append(value)
+                # if segment buffer is 1000 then add to segment queue and clear
+                if len(segment_buffer) >= segment_buf_size:
+                    while True:
+                        result = add_to_queue(segment_queue, segment_buffer)
+                        if result:
+                            break
+                        print_log("SEGMENT QUEUE ADD = FALSE")
+                    segment_buffer = []
+                # break if closing
+                if not runThreads or not runMockECG:
+                    break
+            mockECGLock.acquire()
+            runMockECG = False
+            mockECGLock.release()
 
 #== SOCKET IO CLIENT ================================================================================================================
 global sio
@@ -239,6 +245,7 @@ def socketIOEmitQueue(threadname, *args, **kwargs):
     while not sio.sid:
         # Wait to connect before continuing
         pass
+    global emit_queue
     while runThreads:
         try:
             item = emit_queue.get()
@@ -324,6 +331,7 @@ def evaluateNNData(data):
 
 def neuralNet(threadname, *args, **kwargs):
     time.sleep(2)
+    global neural_net_queue
     while runThreads:
         try:
             item = neural_net_queue.get()
@@ -333,7 +341,7 @@ def neuralNet(threadname, *args, **kwargs):
                 result = evaluateNNData(item)
                 if result >= 0:
                     print_log("FUCK YOU'RE GONNA DIE => " + BEAT_TYPES[ARRYTHMIA_TYPES_INDEX[result]])
-                    #add_to_emit_queue('alert', BEAT_TYPES[ARRYTHMIA_TYPES_INDEX[result]])
+                    add_to_emit_queue('alert', BEAT_TYPES[ARRYTHMIA_TYPES_INDEX[result]])
                 else:
                     print_log("YEAH WE GOOD BABY")
                 neural_net_queue.task_done()
@@ -348,6 +356,8 @@ def segmentation(threadname, *args, **kwargs):
     transfer_buffer = []
     #with open('../Datasets/ARD.csv', mode='w', newline='') as save_file:
         #csv_writer = csv.writer(save_file)
+    global segment_queue
+    global neural_net_queue
     while runThreads:
         try:
             item = segment_queue.get()
@@ -392,7 +402,7 @@ def main(argv):
     segment_type_dict = {}
     global ECGSegments
     ECGSegments = []
-    #load_ECG_segments()
+    load_ECG_segments()
 
     MODEL_FOLDER = "../Models"
     binary_path = os.path.join(MODEL_FOLDER, 'BinaryNN.pt')
@@ -414,16 +424,18 @@ def main(argv):
     arrythmia_model = torch.load(arrythmia_path)
     arrythmia_model.eval()
 
-    serial_t = threading.Thread(name="Serial", target=serial, args=("Serial", emit_buf_size, segment_buf_size))
     mock_serial_t = threading.Thread(name="MockSerial", target=mock_serial, args=("Serial", emit_buf_size, segment_buf_size))
+    serial_t = threading.Thread(name="Serial", target=serial, args=("Serial", emit_buf_size, segment_buf_size))
     socketIOClient_t = threading.Thread(name="SocketIOClient", target=socketIOClient, args=("SocketIOClient", local))
     socketIOEmitQueue_t = threading.Thread(name="SocketIOQueue", target=socketIOEmitQueue, args=("SocketIOQueue"))
     neuralNet_t = threading.Thread(name="NeuralNet", target=neuralNet, args=("NeuralNet"))
     segmentation_t = threading.Thread(name="Segmentation", target=segmentation, args=("Segmentation"))
 
     try:
-        serial_t.start()
-        mock_serial_t.start()
+        if mockMode:
+            mock_serial_t.start()
+        else:
+            serial_t.start()
         socketIOClient_t.start()
         socketIOEmitQueue_t.start()
         neuralNet_t.start()
@@ -433,8 +445,10 @@ def main(argv):
         sys.exit()
         runThreads = False
         sio.disconnect()
-        serial_t.join()
-        mock_serial_t.join()
+        if mockMode:
+            mock_serial_t.join()
+        else:
+            serial_t.join()
         socketIOClient_t.join()
         socketIOEmitQueue_t.join()
         neuralNet_t.join()
