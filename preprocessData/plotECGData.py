@@ -25,5 +25,7 @@ def plot_ecg(filename, delay=5, start=0):
 if __name__ == "__main__":
     #filename = '/Users/connorsparling/Documents/GitHub/HealthMonitorUnit/Datasets/ECGSectionData.csv'
     #filename = '/Users/connorsparling/Documents/GitHub/HealthMonitorUnit/Datasets/ECGTestSectionData.csv'
-    filename = '/Users/connorsparling/Documents/GitHub/HealthMonitorUnit/Datasets/ARD.csv'
+    #filename = '/Users/connorsparling/Documents/GitHub/HealthMonitorUnit/Datasets/ARD.csv'
+    #filename = '/Users/connorsparling/Documents/GitHub/HealthMonitorUnit/Datasets/ECGSegmentDataConnorStanding.csv'
+    filename = '/Users/connorsparling/Documents/GitHub/HealthMonitorUnit/Datasets/ECGSegmentDataAlexSitting.csv'
     plot_ecg(filename, 1)

@@ -60,34 +60,36 @@ def serial(threadname, emit_buf_size=100, segment_buf_size=200, *args, **kwargs)
     segment_buffer = []
     index = 0
     global segment_queue
-    if serialRecieve.LoadECGData() == 0:
-        print_log("Something went wrong with the serial connection")
+    while runThreads:
+        time.sleep(2)
+        if serialRecieve.LoadECGData() == None:
+            print_log("Something went wrong with the serial connection")
 
-    for value in serialRecieve.LoadECGData():
-        # add to emit buffer
-        emit_buffer.append({'sampleNum': index, 'value': value})
-        # if emit buffer is 100 then add to emit queue and clear
-        if len(emit_buffer) >= emit_buf_size: # 100:
-            while True:
-                result = add_to_emit_queue('new-ecg-point', {'data': emit_buffer})
-                if result:
-                    break
-                print_log("EMIT QUEUE ADD = FALSE")
-            emit_buffer = []
+        for value in serialRecieve.LoadECGData():
+            # add to emit buffer
+            emit_buffer.append({'sampleNum': index, 'value': value})
+            # if emit buffer is 100 then add to emit queue and clear
+            if len(emit_buffer) >= emit_buf_size: # 100:
+                while True:
+                    result = add_to_emit_queue('new-ecg-point', {'data': emit_buffer})
+                    if result:
+                        break
+                    print_log("EMIT QUEUE ADD = FALSE")
+                emit_buffer = []
 
-        # add to segment buffer
-        segment_buffer.append(value)
-        # if segment buffer is 1000 then add to segment queue and clear
-        if len(segment_buffer) >= segment_buf_size: # 1000:
-            while True:
-                result = add_to_queue(segment_queue, segment_buffer)
-                if result:
-                    break
-                print_log("SEGMENT QUEUE ADD = FALSE")
-            segment_buffer = []
-        # break if closing
-        if not runThreads:
-            break
+            # add to segment buffer
+            segment_buffer.append(value)
+            # if segment buffer is 1000 then add to segment queue and clear
+            if len(segment_buffer) >= segment_buf_size: # 1000:
+                while True:
+                    result = add_to_queue(segment_queue, segment_buffer)
+                    if result:
+                        break
+                    print_log("SEGMENT QUEUE ADD = FALSE")
+                segment_buffer = []
+            # break if closing
+            if not runThreads:
+                break
 
 #== MOCK SERIAL ==========================================================================================================================
 # used to test without the arduino
