@@ -11,7 +11,7 @@ import ctypes
 import random
 
 # filename
-FILENAME = "MockData/ECGDataStream.csv"
+FILENAME = "../Datasets/ECGDataStream.csv"
 
 #Packet Constants
 PKT_START1 = b'\x0A'
@@ -144,15 +144,19 @@ def LoadECGData():
         else:
             ser = serial.Serial('COM3', 115200) # Serial port for windows
     except (OSError, serial.SerialException):
-        print_log("FUCK ERROR")
-        return 0
+        print_log("ECG Not Connected")
+        return None
         
-    while True:
-        if ser.in_waiting > 0:
-            byte = ser.read()
-            ecg = process_serial(byte)
-            if ecg is not None:
-                yield ecg
+    try:
+        while True:
+            if ser.in_waiting > 0:
+                byte = ser.read()
+                ecg = process_serial(byte)
+                if ecg is not None:
+                    yield ecg
+    except:
+        print_log("SERIAL DISCONNECTED")
+        return None
 
 # Create mock processing
 def Mock_Process(byte1, byte2):

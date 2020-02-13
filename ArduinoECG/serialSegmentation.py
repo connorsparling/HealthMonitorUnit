@@ -10,7 +10,7 @@ SAMPLE_SIZE = 200 # number of points we are putting through the neural network
 def get_peaks(data):
     data = list(data)
     # hard coded value that has shown to get the best peak accuracy (lower is more peaks, higher is less peaks)
-    peaks, _ = find_peaks(data, prominence=0.6) 
+    peaks, _ = find_peaks(data, prominence=0.5, height=0.8) 
     return peaks
 
 # Split take the peaks and split the segments based on the half way point between peaks

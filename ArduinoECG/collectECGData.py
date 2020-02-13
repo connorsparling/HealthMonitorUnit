@@ -90,8 +90,8 @@ def segmentation(threadname, segment_queue, save_data_queue):
 def main(argv):
     global runThreads
     runThreads = True
-    segment_csv_file = '../Datasets/ECGSectionData.csv'
-    section_csv_file = '../Datasets/ECGData.csv'
+    segment_csv_file = '../Datasets/ECGSegmentDataAlexSitting.csv'
+    section_csv_file = '../Datasets/ECGSectionDataAlexSitting.csv'
 
     segment_queue = queue.Queue() # Pull off segment queue for processing
     save_data_queue = queue.Queue()

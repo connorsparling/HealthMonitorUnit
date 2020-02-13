@@ -117,6 +117,7 @@ export class Tab2Page implements OnInit {
   }
 
   startECG() {
+    this.removeData();
     this.webSocketService.emitMessage('start-ecg');
   }
 

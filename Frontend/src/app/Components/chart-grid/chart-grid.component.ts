@@ -1,4 +1,5 @@
-import { Component, OnInit, Input } from '@angular/core';
+import { Component, OnInit, Input, Output, EventEmitter } from '@angular/core';
+import { WebSocketService } from 'src/app/Services/web-socket.service';
 
 @Component({
   selector: 'app-chart-grid',
@@ -11,8 +12,15 @@ export class ChartGridComponent implements OnInit {
     values: number[]
   }[];
 
-  constructor() { }
+  constructor(
+    private webSocketService: WebSocketService
+  ) { }
 
   ngOnInit() {}
 
+  testData(data) {
+    console.log("CLICK");
+    console.log(data);
+    this.webSocketService.emitMessage('test-segment', data);
+  }
 }
